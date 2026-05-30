@@ -8,10 +8,17 @@ test.describe('Check Home Page', () => {
   let context: BrowserContext;
 
   test.beforeAll( async () => {
-    // On Linux CI containers, Electron needs --disable-gpu and --no-sandbox
-    // (the kernel sandbox features aren't available in most CI environments).
+    // On Linux CI containers, Electron needs several flags to avoid renderer
+    // hangs caused by GPU init, /dev/shm exhaustion, and kernel sandbox limits.
     const extraArgs = process.env['CI']
-      ? ['--disable-gpu', '--no-sandbox']
+      ? [
+          '--disable-gpu',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-software-rasterizer',
+          '--no-first-run',
+        ]
       : [];
     app = await electron.launch({
       args: [PATH.join(__dirname, '../electron-dist/main.js'), ...extraArgs],
@@ -20,6 +27,13 @@ test.describe('Check Home Page', () => {
     context = app.context();
     await context.tracing.start({ screenshots: true, snapshots: true });
     firstWindow = await app.firstWindow();
+
+    // Log renderer console output in CI to help diagnose bootstrap failures
+    if (process.env['CI']) {
+      firstWindow.on('console', (msg) => console.log('[renderer]', msg.type(), msg.text()));
+      firstWindow.on('pageerror', (err) => console.error('[renderer error]', err.message));
+    }
+
     await firstWindow.waitForLoadState('domcontentloaded');
   });
 
