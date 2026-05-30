@@ -19,6 +19,13 @@
               <mat-radio-button value="bulk">Bulk (name contains)</mat-radio-button>
             </mat-radio-group>
 
+            <div class="restore-row">
+              <button mat-stroked-button (click)="loadAndRestoreSnapshot()">
+                <mat-icon>restore</mat-icon>
+                Load Snapshot to Restore
+              </button>
+            </div>
+
             <div class="search-row">
               <mat-form-field class="search-field" appearance="outline">
                 <mat-label>{{ mode === 'single' ? 'Exact role name' : 'Partial name filter' }}</mat-label>
@@ -49,8 +56,12 @@
             }
 
             @if (searched && roleRows.length > 0) {
-              <div class="result-count">
-                {{ roleRows.length }} role(s) found · {{ selectedRoles().length }} selected
+              <div class="result-count-row">
+                <span>{{ roleRows.length }} role(s) found · {{ selectedRoles().length }} selected</span>
+                @if (mode === 'bulk') {
+                  <button mat-button (click)="selectAll()">Select All {{ roleRows.length }}</button>
+                  <button mat-button (click)="clearSelection()">Clear</button>
+                }
               </div>
               <table mat-table [dataSource]="roleRows" class="role-table mat-elevation-z1">
                 <ng-container matColumnDef="select">
@@ -243,6 +254,42 @@
                   </div>
                 </mat-tab>
               </mat-tab-group>
+              <div class="simulate-row">
+                <button
+                  mat-stroked-button
+                  color="accent"
+                  (click)="simulate()"
+                  [disabled]="!buildParams() || simulating"
+                >
+                  @if (simulating) {
+                    <mat-spinner diameter="16"></mat-spinner>
+                  } @else {
+                    <mat-icon>science</mat-icon>
+                  }
+                  Simulate ({{ roleRows.length }} roles)
+                </button>
+              </div>
+              @if (simulationResults) {
+                <mat-card class="simulation-card">
+                  <mat-card-header>
+                    <mat-card-title>Simulation Results</mat-card-title>
+                    <mat-card-subtitle>Applied against all {{ simulationResults.total }} fetched roles — no writes</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <div class="sim-stats">
+                      <span class="sim-stat-change">{{ simulationResults.wouldChange }} would change</span>
+                      <span class="sim-stat-skip">{{ simulationResults.wouldSkip }} would skip</span>
+                    </div>
+                    @if (simulationResults.wouldSkip > 0) {
+                      <div class="skip-reasons">
+                        @for (entry of skipReasonEntries(); track entry.reason) {
+                          <div>{{ entry.reason }}: {{ entry.count }}</div>
+                        }
+                      </div>
+                    }
+                  </mat-card-content>
+                </mat-card>
+              }
             }
           </mat-card-content>
         </mat-card>
@@ -280,8 +327,7 @@
             }
 
             <div class="preview-summary">
-              {{ actionablePreviews().length }} role(s) will change ·
-              {{ skippedPreviews().length }} skipped
+              {{ actionablePreviews().length }} role(s) will change · {{ skippedPreviews().length }} skipped · Operation: {{ activeOperation }}
             </div>
 
             @for (p of previews; track p.row.id) {
@@ -309,6 +355,16 @@
                         <h4>Proposed</h4>
                         <app-criteria-tree [node]="p.result.tree" variant="added"></app-criteria-tree>
                       </div>
+                    </div>
+                    <div class="patch-json-section">
+                      <button mat-button (click)="togglePatchJson(p.row.id)">
+                        <mat-icon>{{ isPatchJsonExpanded(p.row.id) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                        View Patch JSON
+                      </button>
+                      <span class="impact-count">{{ leafChangeCount(p) }} leaf node(s) affected</span>
+                      @if (isPatchJsonExpanded(p.row.id)) {
+                        <pre class="patch-json-block">{{ p.result.patch | json }}</pre>
+                      }
                     </div>
                   }
                 </mat-card-content>
@@ -369,6 +425,10 @@
                 Re-download snapshot
               </button>
             }
+            <button mat-button (click)="loadAndRestoreSnapshot()">
+              <mat-icon>restore</mat-icon>
+              Restore from Snapshot
+            </button>
             <button mat-raised-button color="primary" (click)="runAgain()">
               <mat-icon>replay</mat-icon>
               Run again

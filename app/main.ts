@@ -284,6 +284,26 @@ try {
     }
   });
 
+  ipcMain.handle('browse-for-json-file', async () => {
+    try {
+      const result = await dialog.showOpenDialog(win!, {
+        title: 'Load Snapshot File',
+        filters: [{ name: 'JSON Snapshots', extensions: ['json'] }],
+        properties: ['openFile'],
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true };
+      }
+      const content = fs.readFileSync(result.filePaths[0], 'utf-8');
+      if (content.length > 5_000_000) {
+        return { success: false, error: 'File too large (> 5 MB)' };
+      }
+      return { success: true, filePath: result.filePaths[0], content };
+    } catch (error) {
+      return { success: false, error: 'Failed to read file' };
+    }
+  });
+
   ipcMain.handle(
     'save-file',
     async (event, options: { defaultPath?: string; content: string }) => {

@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTree, MatTreeModule } from '@angular/material/tree';
 import { CriteriaNode, leafValues } from '../models/criteria.model';
 
@@ -22,7 +23,7 @@ import { CriteriaNode, leafValues } from '../models/criteria.model';
 @Component({
   selector: 'app-criteria-tree',
   standalone: true,
-  imports: [MatTreeModule, MatIconModule, MatButtonModule],
+  imports: [MatTreeModule, MatIconModule, MatButtonModule, MatTooltipModule],
   templateUrl: './criteria-tree.component.html',
   styleUrl: './criteria-tree.component.scss',
 })
@@ -32,6 +33,8 @@ export class CriteriaTreeComponent implements OnChanges, AfterViewInit {
 
   /** Visual tint for diff context. */
   @Input() variant: 'plain' | 'added' | 'removed' = 'plain';
+
+  @Input() showCopyButton = true;
 
   @ViewChild('tree') tree?: MatTree<CriteriaNode>;
 
@@ -58,6 +61,15 @@ export class CriteriaTreeComponent implements OnChanges, AfterViewInit {
   /** Defer expansion until the tree has rendered the (re)assigned data. */
   private expandLater(): void {
     setTimeout(() => this.tree?.expandAll());
+  }
+
+  copyJson(): void { navigator.clipboard.writeText(JSON.stringify(this.node, null, 2)).catch(() => {}); }
+
+  tooltipText(node: CriteriaNode): string {
+    if (!node.key) return '';
+    const parts = [`type: ${node.key.type}`, `property: ${node.key.property}`];
+    if (node.key.sourceId) parts.push(`sourceId: ${node.key.sourceId}`);
+    return parts.join(' · ');
   }
 
   /** Comma-joined leaf values for display (∅ when the leaf has no value). */

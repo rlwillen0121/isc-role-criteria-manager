@@ -105,6 +105,20 @@
   }
 }
 
+.tree-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+.composite-and > .composite-row {
+  border-left: 3px solid #2e7d32;
+  padding-left: 6px;
+}
+.composite-or > .composite-row {
+  border-left: 3px solid #e65100;
+  padding-left: 6px;
+}
+
 :host-context(.dark-theme) {
   .criteria-tree .nested-children {
     border-left-color: rgba(255, 255, 255, 0.18);
