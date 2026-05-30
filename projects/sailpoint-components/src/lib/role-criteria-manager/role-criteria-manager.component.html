@@ -19,13 +19,6 @@
               <mat-radio-button value="bulk">Bulk (name contains)</mat-radio-button>
             </mat-radio-group>
 
-            <div class="restore-row">
-              <button mat-stroked-button (click)="loadAndRestoreSnapshot()">
-                <mat-icon>restore</mat-icon>
-                Load Snapshot to Restore
-              </button>
-            </div>
-
             <div class="search-row">
               <mat-form-field class="search-field" appearance="outline">
                 <mat-label>{{ mode === 'single' ? 'Exact role name' : 'Partial name filter' }}</mat-label>
@@ -111,6 +104,10 @@
         </mat-card>
 
         <div class="step-actions">
+          <button mat-stroked-button (click)="loadAndRestoreSnapshot()">
+            <mat-icon>restore</mat-icon>
+            Restore from Snapshot
+          </button>
           <button
             mat-raised-button
             color="primary"
