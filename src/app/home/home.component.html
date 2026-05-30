@@ -261,35 +261,19 @@
     <!-- Connected State -->
     @if (state.isConnected) {
       <div class="dashboard-page">
-        <!-- Main Dashboard Grid -->
         <div class="dashboard-grid">
-          <!-- Top Row - Stats Cards -->
+          <!-- Stat row: roles count only -->
           <div class="dashboard-row">
             <div class="dashboard-card stats-card">
-              <app-tenant-data></app-tenant-data>
-            </div>
-            <div class="dashboard-card stats-card">
-              <app-sources></app-sources>
-            </div>
-            <div class="dashboard-card stats-card">
-              <app-identities></app-identities>
-            </div>
-            <div class="dashboard-card stats-card">
-              <app-identity-profiles></app-identity-profiles>
+              <app-roles-count></app-roles-count>
             </div>
           </div>
-          <!-- Installed Tools Row -->
+          <!-- Installed Tools (RCM launch card) -->
           @if (enabledTools.length > 0) {
             <div class="dashboard-row">
               <app-installed-tools-card [components]="enabledTools"></app-installed-tools-card>
             </div>
           }
-          <!-- Bottom Row - Shortcuts Card -->
-          <div class="dashboard-row">
-            <div class="dashboard-card shortcuts-card">
-              <app-shortcuts></app-shortcuts>
-            </div>
-          </div>
         </div>
       </div>
     }
