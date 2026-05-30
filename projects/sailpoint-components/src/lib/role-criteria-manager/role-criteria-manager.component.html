@@ -139,8 +139,11 @@
                   <div class="op-form">
                     <mat-form-field appearance="outline">
                       <mat-label>Attribute</mat-label>
-                      <input matInput [(ngModel)]="updateForm.attribute" [matAutocomplete]="autoU" />
-                      <mat-autocomplete #autoU="matAutocomplete">
+                      <input matInput [(ngModel)]="updateForm.attribute"
+                             [matAutocomplete]="autoU"
+                             (ngModelChange)="onUpdateAttributeChange()" />
+                      <mat-autocomplete #autoU="matAutocomplete"
+                                        (optionSelected)="onUpdateAttributeChange()">
                         @for (opt of filterAttributes(updateForm.attribute); track opt) {
                           <mat-option [value]="opt">{{ opt }}</mat-option>
                         }
@@ -148,7 +151,16 @@
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Old value to match</mat-label>
-                      <input matInput [(ngModel)]="updateForm.oldValue" />
+                      @if (oldValueOptions.length > 0) {
+                        <mat-select [(ngModel)]="updateForm.oldValue">
+                          @for (v of oldValueOptions; track v) {
+                            <mat-option [value]="v">{{ v }}</mat-option>
+                          }
+                        </mat-select>
+                      } @else {
+                        <input matInput [(ngModel)]="updateForm.oldValue"
+                               placeholder="Type a value or select an attribute first" />
+                      }
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>New value(s), comma-separated</mat-label>
@@ -343,6 +355,31 @@
                   @if (p.result.status === 'skipped') {
                     <div class="skip-reason">Reason: {{ p.result.reason }}</div>
                   } @else {
+                    <!-- Identity count before/after -->
+                    @if (identityCount(p.row.id); as ic) {
+                      <div class="identity-count-row">
+                        <mat-icon class="identity-count-icon">people</mat-icon>
+                        @if (ic.loading) {
+                          <mat-spinner diameter="14"></mat-spinner>
+                          <span class="identity-count-label">Counting identities…</span>
+                        } @else {
+                          <span class="identity-count-label">
+                            Identities:
+                            <strong>{{ ic.before ?? '?' }}</strong>
+                            →
+                            <strong [class.count-up]="(ic.after ?? 0) > (ic.before ?? 0)"
+                                    [class.count-down]="(ic.after ?? 0) < (ic.before ?? 0)">
+                              {{ ic.after ?? '?' }}
+                            </strong>
+                            @if (ic.before !== null && ic.after !== null) {
+                              <span class="count-delta">
+                                ({{ ic.after - ic.before >= 0 ? '+' : '' }}{{ ic.after - ic.before }})
+                              </span>
+                            }
+                          </span>
+                        }
+                      </div>
+                    }
                     <div class="diff-cols">
                       <div class="diff-col">
                         <h4>Current</h4>
