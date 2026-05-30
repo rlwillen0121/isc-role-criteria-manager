@@ -413,6 +413,15 @@
                     @if (r.detail) {
                       <span class="result-detail">{{ r.detail }}</span>
                     }
+                    @if (r.status === 'Updated') {
+                      <span class="criteria-delta">
+                        @if (r.verifying) {
+                          <mat-spinner diameter="14"></mat-spinner>
+                        } @else if (r.nodesAfter !== undefined) {
+                          {{ r.nodesBefore ?? '?' }} → {{ r.nodesAfter }} nodes
+                        }
+                      </span>
+                    }
                   </div>
                 }
               </div>

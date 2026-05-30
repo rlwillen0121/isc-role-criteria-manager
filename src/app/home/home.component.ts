@@ -23,7 +23,9 @@ import { SourcesComponent } from './dashboard-cards/sources/sources.component';
 import { IdentitiesComponent } from './dashboard-cards/identities/identities.component';
 import { IdentityProfilesComponent } from './dashboard-cards/identity-profiles/identity-profiles.component';
 import { ShortcutsComponent } from './dashboard-cards/shortcuts/shortcuts.component';
-import { ElectronApiFactoryService } from 'sailpoint-components';
+import { ElectronApiFactoryService, ConfigService, ComponentInfo } from 'sailpoint-components';
+import { InstalledToolsCardComponent } from './dashboard-cards/installed-tools/installed-tools-card.component';
+import { Subscription } from 'rxjs';
 
 import { WebAuthComponent, AuthEvent } from '../web-auth/web-auth.component';
 import { GenericDialogComponent, OAuthDialogComponent, OAuthDialogData } from 'sailpoint-components'
@@ -72,6 +74,7 @@ type ComponentState = {
     IdentitiesComponent,
     IdentityProfilesComponent,
     ShortcutsComponent,
+    InstalledToolsCardComponent,
     CommonModule,
     MatDialogModule,
     MatButtonModule,
@@ -125,6 +128,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   oauthAuthUrl: string | null = null;
   pollIntervalId: ReturnType<typeof setInterval> | undefined = undefined;
 
+  enabledTools: ComponentInfo[] = [];
+  private toolsSubscription: Subscription | undefined = undefined;
+
   private http = inject(HttpClient);
 
   constructor(
@@ -133,8 +139,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private electronService: ElectronApiFactoryService,
+    private configService: ConfigService,
     @Inject(DOCUMENT) private document: Document
-  ) { 
+  ) {
     // Check if running in web mode - use isElectron getter
     this.state.isWebMode = !this.electronService.isElectron;
 
@@ -156,6 +163,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     // In web mode, the WebAuthComponent will handle login status checks and OAuth callbacks
     // No need to duplicate that logic here
 
+    this.toolsSubscription = this.configService.enabledComponents$.subscribe((components) => {
+      this.enabledTools = components.filter(c => c.enabled && c.name !== 'component-selector');
+    });
+
     this.state.loading = false;
 
   }
@@ -163,6 +174,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     // Clean up polling when component is destroyed
     this.stopPolling();
+    this.toolsSubscription?.unsubscribe();
   }
 
   async checkSessionStatus(): Promise<void> {

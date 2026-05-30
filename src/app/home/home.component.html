@@ -278,6 +278,12 @@
               <app-identity-profiles></app-identity-profiles>
             </div>
           </div>
+          <!-- Installed Tools Row -->
+          @if (enabledTools.length > 0) {
+            <div class="dashboard-row">
+              <app-installed-tools-card [components]="enabledTools"></app-installed-tools-card>
+            </div>
+          }
           <!-- Bottom Row - Shortcuts Card -->
           <div class="dashboard-row">
             <div class="dashboard-card shortcuts-card">
