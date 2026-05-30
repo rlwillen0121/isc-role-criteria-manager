@@ -18,11 +18,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { SharedModule } from '../shared/shared.module';
-import { TenantDataCardComponent } from './dashboard-cards/tenant-data/tenant-data-card.component';
-import { SourcesComponent } from './dashboard-cards/sources/sources.component';
-import { IdentitiesComponent } from './dashboard-cards/identities/identities.component';
-import { IdentityProfilesComponent } from './dashboard-cards/identity-profiles/identity-profiles.component';
-import { ShortcutsComponent } from './dashboard-cards/shortcuts/shortcuts.component';
+import { RolesCountComponent } from './dashboard-cards/roles/roles-count.component';
 import { ElectronApiFactoryService, ConfigService, ComponentInfo } from 'sailpoint-components';
 import { InstalledToolsCardComponent } from './dashboard-cards/installed-tools/installed-tools-card.component';
 import { Subscription } from 'rxjs';
@@ -69,11 +65,7 @@ type ComponentState = {
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
   imports: [
-    TenantDataCardComponent,
-    SourcesComponent,
-    IdentitiesComponent,
-    IdentityProfilesComponent,
-    ShortcutsComponent,
+    RolesCountComponent,
     InstalledToolsCardComponent,
     CommonModule,
     MatDialogModule,
