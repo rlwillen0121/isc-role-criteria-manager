@@ -66,6 +66,8 @@
           routerLinkActive="active-link"
           [class.disabled]="!isConnected"
           (click)="onNavItemClick($event)"
+          matTooltip="Home"
+          matTooltipPosition="right"
           >
           <mat-icon class="card-icon">home</mat-icon>
           Home
@@ -78,6 +80,8 @@
             routerLinkActive="active-link"
             [class.disabled]="!isConnected"
             (click)="onNavItemClick($event)"
+            matTooltip="Theme Picker"
+            matTooltipPosition="right"
             >
             <mat-icon class="card-icon">palette</mat-icon>
             Theme Picker
@@ -91,6 +95,8 @@
             routerLinkActive="active-link"
             [class.disabled]="!isConnected"
             (click)="onNavItemClick($event)"
+            matTooltip="Role Criteria Manager"
+            matTooltipPosition="right"
             >
             <mat-icon class="card-icon">account_tree</mat-icon>
             Role Criteria Manager
@@ -104,6 +110,8 @@
             routerLinkActive="active-link"
             [class.disabled]="!isConnected"
             (click)="onNavItemClick($event)"
+            matTooltip="Component Selector"
+            matTooltipPosition="right"
             >
             <mat-icon class="card-icon">settings</mat-icon>
             Component Selector

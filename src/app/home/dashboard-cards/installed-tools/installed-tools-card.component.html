@@ -1,0 +1,28 @@
+<mat-card class="tools-card">
+  <mat-card-header>
+    <mat-card-title>
+      <mat-icon class="card-title-icon">build</mat-icon>
+      Installed Tools
+    </mat-card-title>
+    <mat-card-subtitle>{{ components.length }} tool(s) available</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="tools-grid">
+      @for (comp of components; track comp.name) {
+        <mat-card class="tool-item mat-elevation-z1">
+          <div class="tool-row">
+            <mat-icon class="tool-icon">{{ comp.icon }}</mat-icon>
+            <div class="tool-info">
+              <span class="tool-name">{{ comp.displayName }}</span>
+              <span class="tool-desc">{{ comp.description }}</span>
+            </div>
+            <button mat-raised-button color="primary" (click)="launch(comp)">
+              <mat-icon>launch</mat-icon>
+              Launch
+            </button>
+          </div>
+        </mat-card>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

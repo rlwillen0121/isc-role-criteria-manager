@@ -66,6 +66,9 @@ interface RunResult {
   id: string;
   status: 'Updated' | 'Skipped' | 'Error';
   detail?: string;
+  nodesBefore?: number;
+  nodesAfter?: number;
+  verifying?: boolean;
 }
 
 type OperationTab =
@@ -568,15 +571,33 @@ export class RoleCriteriaManagerComponent {
     }
 
     for (const preview of actionable) {
+      const nodesBefore = countNodes(preview.before);
       try {
         await this.sdk.patchRole({
           id: preview.row.id,
           jsonPatchOperationV2025: preview.result.patch as never,
         });
-        this.results.push({
+        const result: RunResult = {
           role: preview.row.name,
           id: preview.row.id,
           status: 'Updated',
+          nodesBefore,
+          verifying: true,
+        };
+        this.results.push(result);
+        this.cdr.detectChanges();
+
+        // Fire verification async — don't block the loop
+        Promise.resolve(this.sdk.getRole({ id: preview.row.id })).then((resp) => {
+          if (resp?.data) {
+            const afterTree = parseCriteria(resp.data.membership?.criteria ?? null);
+            result.nodesAfter = countNodes(afterTree);
+          }
+          result.verifying = false;
+          this.cdr.detectChanges();
+        }).catch(() => {
+          result.verifying = false;
+          this.cdr.detectChanges();
         });
       } catch (err) {
         this.results.push({

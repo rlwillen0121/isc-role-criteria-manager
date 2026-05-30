@@ -184,8 +184,14 @@ button {
 
 mat-sidenav {
   min-width: 100px;
-  max-width: 200px;
+  max-width: 240px;
   margin-right: 10px;
+}
+
+.sidebar-link {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-item {
