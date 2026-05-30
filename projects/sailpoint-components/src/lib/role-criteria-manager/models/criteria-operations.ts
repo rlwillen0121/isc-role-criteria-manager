@@ -204,6 +204,7 @@ export interface AddBlockParams {
   values: string[];
   join: CompositeOperation;
   keyType?: string;
+  sourceId?: string | null;
 }
 
 /**
@@ -221,7 +222,8 @@ export function addBlock(
     params.attribute,
     params.operation,
     params.values,
-    params.keyType ?? 'IDENTITY'
+    params.keyType ?? 'IDENTITY',
+    params.sourceId ?? null
   );
 
   if (!membership.criteria) {

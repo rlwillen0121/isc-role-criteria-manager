@@ -204,16 +204,49 @@ export function countLeafNodes(node: CriteriaNode | null): number {
   return node.children.reduce((acc, child) => acc + countLeafNodes(child), 0);
 }
 
+/**
+ * Returns true when the role's membership criteria tree contains at least one
+ * leaf that matches all of the supplied filter fields:
+ *   - `attribute`: compared case-insensitively against `key.property` (substring)
+ *   - `operation`: when non-empty, must equal the leaf's operation exactly
+ *   - `value`: when non-empty, must appear in the leaf's stringValue/values[] (case-insensitive)
+ */
+export function roleMatchesCriteriaFilter(
+  membership: MembershipSelector | null | undefined,
+  filter: { attribute: string; operation?: LeafOperation | ''; value?: string }
+): boolean {
+  const root = membership?.criteria ?? null;
+  if (!root) return false;
+  const attrLower = filter.attribute.toLowerCase();
+  const valLower = (filter.value ?? '').toLowerCase();
+
+  const walk = (node: CriteriaNode): boolean => {
+    if (isLeaf(node)) {
+      const prop = node.key?.property ?? '';
+      if (!prop.toLowerCase().includes(attrLower)) return false;
+      if (filter.operation && node.operation !== filter.operation) return false;
+      if (valLower) {
+        const vals = leafValues(node).map((v) => v.toLowerCase());
+        if (!vals.some((v) => v.includes(valLower))) return false;
+      }
+      return true;
+    }
+    return (node.children ?? []).some(walk);
+  };
+
+  return walk(root);
+}
+
 /** Build a new leaf node from an attribute, operation and value list. */
 export function buildLeafNode(
   property: string,
   operation: LeafOperation,
   values: string[],
-  keyType = 'IDENTITY'
+  keyType = 'IDENTITY',
+  sourceId?: string | null
 ): CriteriaNode {
-  const node: CriteriaNode = {
-    operation,
-    key: { type: keyType, property },
-  };
+  const key: CriteriaKey = { type: keyType, property };
+  if (sourceId) key.sourceId = sourceId;
+  const node: CriteriaNode = { operation, key };
   return applyValueInvariant(node, values);
 }

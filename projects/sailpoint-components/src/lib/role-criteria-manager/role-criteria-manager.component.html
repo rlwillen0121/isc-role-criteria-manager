@@ -17,29 +17,124 @@
             >
               <mat-radio-button value="single">Single role (exact name)</mat-radio-button>
               <mat-radio-button value="bulk">Bulk (name contains)</mat-radio-button>
+              <mat-radio-button value="criteria">Find by criteria</mat-radio-button>
+              <mat-radio-button value="access">Find by access profile / entitlement</mat-radio-button>
             </mat-radio-group>
 
-            <div class="search-row">
-              <mat-form-field class="search-field" appearance="outline">
-                <mat-label>{{ mode === 'single' ? 'Exact role name' : 'Partial name filter' }}</mat-label>
-                <input
-                  matInput
-                  [(ngModel)]="searchText"
-                  (keyup.enter)="findRoles()"
-                  placeholder="e.g. DL - Engineering"
-                />
-              </mat-form-field>
-              <button
-                mat-raised-button
-                color="primary"
-                class="find-button"
-                (click)="findRoles()"
-                [disabled]="searching"
-              >
-                <mat-icon>search</mat-icon>
-                Find Roles
-              </button>
-            </div>
+            @if (mode === 'single' || mode === 'bulk') {
+              <div class="search-row">
+                <mat-form-field class="search-field" appearance="outline">
+                  <mat-label>{{ mode === 'single' ? 'Exact role name' : 'Partial name filter' }}</mat-label>
+                  <input
+                    matInput
+                    [(ngModel)]="searchText"
+                    (keyup.enter)="findRoles()"
+                    placeholder="e.g. DL - Engineering"
+                  />
+                </mat-form-field>
+                <button
+                  mat-raised-button
+                  color="primary"
+                  class="find-button"
+                  (click)="findRoles()"
+                  [disabled]="searching"
+                >
+                  <mat-icon>search</mat-icon>
+                  Find Roles
+                </button>
+              </div>
+            }
+
+            @if (mode === 'access') {
+              <div class="criteria-filter-section">
+                <div class="criteria-filter-row">
+                  <mat-radio-group [(ngModel)]="accessFilter.type" class="access-type-group">
+                    <mat-radio-button value="accessProfile">Access Profile</mat-radio-button>
+                    <mat-radio-button value="entitlement">Entitlement</mat-radio-button>
+                  </mat-radio-group>
+                  <mat-form-field appearance="outline" class="criteria-attr-field">
+                    <mat-label>Name contains (required)</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="accessFilter.name"
+                      [matAutocomplete]="autoAccessName"
+                      (focus)="loadAccessSuggestions()"
+                      (keyup.enter)="findRoles()"
+                      placeholder="e.g. Engineering"
+                    />
+                    <mat-autocomplete #autoAccessName="matAutocomplete">
+                      @for (opt of filterAccessSuggestions(accessFilter.name); track opt) {
+                        <mat-option [value]="opt">{{ opt }}</mat-option>
+                      }
+                    </mat-autocomplete>
+                  </mat-form-field>
+                  <button
+                    mat-raised-button
+                    color="primary"
+                    class="find-button"
+                    (click)="findRoles()"
+                    [disabled]="searching || !accessFilter.name.trim()"
+                  >
+                    <mat-icon>search</mat-icon>
+                    Find Roles
+                  </button>
+                </div>
+              </div>
+            }
+
+            @if (mode === 'criteria') {
+              <div class="criteria-filter-section">
+                <div class="criteria-filter-row">
+                  <mat-form-field appearance="outline" class="criteria-attr-field">
+                    <mat-label>Attribute (required)</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="criteriaFilter.attribute"
+                      [matAutocomplete]="autoCriteriaAttr"
+                      (focus)="loadIdentityAttributeSuggestions()"
+                      (keyup.enter)="findRoles()"
+                      placeholder="e.g. attribute.department"
+                    />
+                    <mat-autocomplete #autoCriteriaAttr="matAutocomplete">
+                      @for (opt of filterCriteriaAttributes(criteriaFilter.attribute); track opt) {
+                        <mat-option [value]="opt">{{ opt }}</mat-option>
+                      }
+                    </mat-autocomplete>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="criteria-op-field">
+                    <mat-label>Operation (optional)</mat-label>
+                    <mat-select [(ngModel)]="criteriaFilter.operation">
+                      <mat-option value="">Any</mat-option>
+                      @for (op of leafOperations; track op) {
+                        <mat-option [value]="op">{{ op }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="criteria-val-field">
+                    <mat-label>Value (optional)</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="criteriaFilter.value"
+                      (keyup.enter)="findRoles()"
+                      placeholder="e.g. Engineering"
+                    />
+                  </mat-form-field>
+
+                  <button
+                    mat-raised-button
+                    color="primary"
+                    class="find-button"
+                    (click)="findRoles()"
+                    [disabled]="searching || !criteriaFilter.attribute.trim()"
+                  >
+                    <mat-icon>search</mat-icon>
+                    Find Roles
+                  </button>
+                </div>
+              </div>
+            }
 
             @if (searching) {
               <div class="loading-row">
@@ -51,7 +146,7 @@
             @if (searched && roleRows.length > 0) {
               <div class="result-count-row">
                 <span>{{ roleRows.length }} role(s) found · {{ selectedRoles().length }} selected</span>
-                @if (mode === 'bulk') {
+                @if (mode === 'bulk' || mode === 'criteria') {
                   <button mat-button (click)="selectAll()">Select All {{ roleRows.length }}</button>
                   <button mat-button (click)="clearSelection()">Clear</button>
                 }
@@ -191,6 +286,21 @@
                 <!-- Add block -->
                 <mat-tab label="Add block">
                   <div class="op-form">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Key type</mat-label>
+                      <mat-select [(ngModel)]="addBlockForm.keyType">
+                        <mat-option value="IDENTITY">IDENTITY</mat-option>
+                        <mat-option value="ACCOUNT">ACCOUNT</mat-option>
+                        <mat-option value="ENTITLEMENT">ENTITLEMENT</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    @if (addBlockForm.keyType !== 'IDENTITY') {
+                      <mat-form-field appearance="outline">
+                        <mat-label>Source ID (required)</mat-label>
+                        <input matInput [(ngModel)]="addBlockForm.sourceId"
+                               placeholder="e.g. 2c9180887671ff8c01769b880e901222" />
+                      </mat-form-field>
+                    }
                     <mat-form-field appearance="outline">
                       <mat-label>Attribute</mat-label>
                       <input matInput [(ngModel)]="addBlockForm.attribute" [matAutocomplete]="autoA" />

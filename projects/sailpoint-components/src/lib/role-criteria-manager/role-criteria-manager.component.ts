@@ -36,6 +36,7 @@ import {
   leafValues,
   MembershipSelector,
   parseCriteria,
+  roleMatchesCriteriaFilter,
 } from './models/criteria.model';
 import {
   applyOperation,
@@ -128,12 +129,30 @@ export class RoleCriteriaManagerComponent {
   @ViewChild('stepper') stepper?: MatStepper;
 
   // ----- Panel 1: Target -----
-  mode: 'single' | 'bulk' = 'single';
+  mode: 'single' | 'bulk' | 'criteria' | 'access' = 'single';
   searchText = '';
+  criteriaFilter: { attribute: string; operation: LeafOperation | ''; value: string } = {
+    attribute: '',
+    operation: '',
+    value: '',
+  };
+  accessFilter: { type: 'accessProfile' | 'entitlement'; name: string } = {
+    type: 'accessProfile',
+    name: '',
+  };
   roleRows: RoleRow[] = [];
   searching = false;
   searched = false;
   readonly displayedColumns = ['select', 'name', 'id', 'membershipType', 'nodeCount'];
+
+  // ----- Panel 1: Identity attribute suggestions (loaded lazily) -----
+  identityAttributeSuggestions: string[] = [];
+  private identityAttributesLoaded = false;
+
+  // ----- Panel 1: Access profile / entitlement suggestions (loaded lazily) -----
+  accessProfileSuggestions: string[] = [];
+  entitlementSuggestions: string[] = [];
+  private accessSuggestionsLoaded = false;
 
   // ----- Panel 2: Operation -----
   selectedTabIndex = 0;
@@ -152,6 +171,8 @@ export class RoleCriteriaManagerComponent {
     operation: 'EQUALS' as LeafOperation,
     values: '',
     join: 'AND' as 'AND' | 'OR',
+    keyType: 'IDENTITY' as 'IDENTITY' | 'ACCOUNT' | 'ENTITLEMENT',
+    sourceId: '',
   };
   removeForm = {
     attribute: '',
@@ -236,6 +257,15 @@ export class RoleCriteriaManagerComponent {
   clearSelection(): void { this.toggleAll(false); }
 
   async findRoles(): Promise<void> {
+    if (this.mode === 'criteria') {
+      await this.findRolesByCriteria();
+      return;
+    }
+    if (this.mode === 'access') {
+      await this.findRolesByAccess();
+      return;
+    }
+
     const text = this.searchText.trim();
     if (!text) {
       this.snackBar.open('Enter a role name to search.', 'Close', {
@@ -296,6 +326,123 @@ export class RoleCriteriaManagerComponent {
     }
   }
 
+  private async findRolesByCriteria(): Promise<void> {
+    const attr = this.criteriaFilter.attribute.trim();
+    if (!attr) {
+      this.snackBar.open('Enter an attribute to search by.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.searching = true;
+    this.searched = false;
+    this.roleRows = [];
+    this.roleCache.clear();
+    this.cdr.detectChanges();
+
+    try {
+      const allRoles = await this.fetchAllRoles(undefined);
+      const filter = {
+        attribute: attr,
+        operation: this.criteriaFilter.operation,
+        value: this.criteriaFilter.value.trim(),
+      };
+      const matched = allRoles.filter((role) =>
+        roleMatchesCriteriaFilter(
+          role.membership as MembershipSelector | null | undefined,
+          filter
+        )
+      );
+
+      this.roleRows = matched.map((role) => {
+        const criteria = parseCriteria(role.membership?.criteria ?? null);
+        return {
+          id: role.id ?? '',
+          name: role.name ?? '(unnamed)',
+          membershipType: role.membership?.type ?? '—',
+          nodeCount: countNodes(criteria),
+          selected: true,
+          role,
+        };
+      });
+
+      if (this.roleRows.length === 0) {
+        this.snackBar.open('No roles matched the criteria filter.', 'Close', { duration: 3000 });
+      }
+    } catch (err) {
+      this.snackBar.open(
+        `Failed to fetch roles: ${this.extractError(err)}`,
+        'Close',
+        { duration: 6000 }
+      );
+    } finally {
+      this.searching = false;
+      this.searched = true;
+      this.cdr.detectChanges();
+    }
+  }
+
+  private async findRolesByAccess(): Promise<void> {
+    const name = this.accessFilter.name.trim();
+    if (!name) {
+      this.snackBar.open('Enter a name to search by.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.searching = true;
+    this.searched = false;
+    this.roleRows = [];
+    this.roleCache.clear();
+    this.cdr.detectChanges();
+
+    try {
+      const allRoles = await this.fetchAllRoles(undefined);
+      const nameLower = name.toLowerCase();
+      const isAP = this.accessFilter.type === 'accessProfile';
+
+      const matched = allRoles.filter((role) => {
+        if (isAP) {
+          return (role.accessProfiles ?? []).some(
+            (ap) => (ap.name ?? '').toLowerCase().includes(nameLower)
+          );
+        } else {
+          return (role.entitlements ?? []).some(
+            (e) => (e.name ?? '').toLowerCase().includes(nameLower)
+          );
+        }
+      });
+
+      this.roleRows = matched.map((role) => {
+        const criteria = parseCriteria(role.membership?.criteria ?? null);
+        return {
+          id: role.id ?? '',
+          name: role.name ?? '(unnamed)',
+          membershipType: role.membership?.type ?? '—',
+          nodeCount: countNodes(criteria),
+          selected: true,
+          role,
+        };
+      });
+
+      if (this.roleRows.length === 0) {
+        this.snackBar.open(
+          `No roles contain a matching ${isAP ? 'access profile' : 'entitlement'}.`,
+          'Close',
+          { duration: 3000 }
+        );
+      }
+    } catch (err) {
+      this.snackBar.open(
+        `Failed to fetch roles: ${this.extractError(err)}`,
+        'Close',
+        { duration: 6000 }
+      );
+    } finally {
+      this.searching = false;
+      this.searched = true;
+      this.cdr.detectChanges();
+    }
+  }
+
   /**
    * Page through `listRoles` accumulating all matches. Pages until an empty
    * page is returned, advancing the offset by each page's actual length. This
@@ -304,7 +451,7 @@ export class RoleCriteriaManagerComponent {
    * one trailing empty request. Prompts for confirmation once the result set
    * grows beyond ~1000.
    */
-  private async fetchAllRoles(filters: string): Promise<RoleV2025[]> {
+  private async fetchAllRoles(filters: string | undefined): Promise<RoleV2025[]> {
     const all: RoleV2025[] = [];
     let offset = 0;
     let confirmedLarge = false;
@@ -422,6 +569,57 @@ export class RoleCriteriaManagerComponent {
     node.children?.forEach(c => this.collectValuesForAttribute(c, attr, out));
   }
 
+  async loadIdentityAttributeSuggestions(): Promise<void> {
+    if (this.identityAttributesLoaded) return;
+    this.identityAttributesLoaded = true;
+    try {
+      const resp = await this.sdk.listIdentityAttributes({});
+      this.identityAttributeSuggestions = (resp.data ?? []).map(
+        (a) => `attribute.${a.name}`
+      );
+    } catch {
+      // suggestions are best-effort; ignore errors
+    }
+  }
+
+  filterCriteriaAttributes(query: string): string[] {
+    const q = (query ?? '').toLowerCase().trim();
+    const all = this.identityAttributeSuggestions;
+    if (!q) return all;
+    return all.filter((a) => a.toLowerCase().includes(q));
+  }
+
+  async loadAccessSuggestions(): Promise<void> {
+    if (this.accessSuggestionsLoaded) return;
+    this.accessSuggestionsLoaded = true;
+    try {
+      const [apResp, entResp] = await Promise.all([
+        this.sdk.listAccessProfiles({ limit: 250 }),
+        this.sdk.listEntitlements({ limit: 250 }),
+      ]);
+      this.accessProfileSuggestions = (apResp.data ?? [])
+        .map((ap) => ap.name ?? '')
+        .filter(Boolean)
+        .sort();
+      this.entitlementSuggestions = (entResp.data ?? [])
+        .map((e) => e.name ?? '')
+        .filter(Boolean)
+        .sort();
+    } catch {
+      // best-effort
+    }
+  }
+
+  filterAccessSuggestions(query: string): string[] {
+    const pool =
+      this.accessFilter.type === 'accessProfile'
+        ? this.accessProfileSuggestions
+        : this.entitlementSuggestions;
+    const q = (query ?? '').toLowerCase().trim();
+    if (!q) return pool.slice(0, 50);
+    return pool.filter((n) => n.toLowerCase().includes(q)).slice(0, 50);
+  }
+
   /** Attribute options filtered by the current input value. */
   filterAttributes(query: string): string[] {
     const q = (query ?? '').toLowerCase().trim();
@@ -458,14 +656,18 @@ export class RoleCriteriaManagerComponent {
         return { type: 'add-values', params: { attribute, addValues } };
       }
       case 'add-block': {
-        const { attribute, operation, join } = this.addBlockForm;
+        const { attribute, operation, join, keyType, sourceId } = this.addBlockForm;
         const values = this.splitValues(this.addBlockForm.values);
         if (!attribute || values.length === 0) {
           return null;
         }
+        if (keyType !== 'IDENTITY' && !sourceId.trim()) {
+          return null;
+        }
         return {
           type: 'add-block',
-          params: { attribute, operation, values, join },
+          params: { attribute, operation, values, join, keyType,
+                    ...(keyType !== 'IDENTITY' ? { sourceId: sourceId.trim() } : {}) },
         };
       }
       case 'remove': {
