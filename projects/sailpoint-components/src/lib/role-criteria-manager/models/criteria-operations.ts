@@ -181,6 +181,10 @@ export function addValues(
   if (!matched) {
     return skipped('attribute not found');
   }
+  if (!changed) {
+    // Attribute found but every value is already present — no write needed.
+    return skipped('all values already present');
+  }
   return {
     status: 'ready',
     tree,
@@ -323,6 +327,12 @@ export function removeCriteria(
 
   const newTree = rebuild(tree);
 
+  if (!changed) {
+    // Nothing matched — don't send a no-op patch.
+    return skipped(
+      params.mode === 'value' ? 'value not found' : 'attribute not found'
+    );
+  }
   return {
     status: 'ready',
     tree: newTree,
@@ -367,37 +377,66 @@ export function consolidate(
       return node;
     }
 
-    const matching: CriteriaNode[] = [];
-    const rest: CriteriaNode[] = [];
+    // Count matching-attribute leaves per comparison operation. Only an
+    // operation shared by >= 2 sibling leaves can be consolidated. Mixed-
+    // operator siblings (e.g. EQUALS vs STARTS_WITH) are left untouched so
+    // membership semantics are preserved — merging them under one operator
+    // would silently change which identities match.
+    const matches = (child: CriteriaNode): boolean =>
+      child.key?.property === params.attribute && !child.children;
+
+    const opCounts = new Map<string, number>();
     for (const child of node.children) {
-      if (child.key?.property === params.attribute && !child.children) {
-        matching.push(child);
-      } else {
-        rest.push(child);
+      if (matches(child)) {
+        opCounts.set(child.operation, (opCounts.get(child.operation) ?? 0) + 1);
       }
     }
-
-    if (matching.length < 2) {
+    const opsToMerge = new Set(
+      [...opCounts.entries()].filter(([, n]) => n >= 2).map(([op]) => op)
+    );
+    if (opsToMerge.size === 0) {
       return node;
     }
     matched = true;
 
-    const merged: string[] = [];
-    for (const leaf of matching) {
-      for (const v of leafValues(leaf)) {
-        if (!merged.includes(v)) {
-          merged.push(v);
+    // Merge values per operation (deduplicated, first-seen order).
+    const mergedByOp = new Map<string, string[]>();
+    for (const child of node.children) {
+      if (matches(child) && opsToMerge.has(child.operation)) {
+        const acc = mergedByOp.get(child.operation) ?? [];
+        for (const v of leafValues(child)) {
+          if (!acc.includes(v)) {
+            acc.push(v);
+          }
         }
+        mergedByOp.set(child.operation, acc);
       }
     }
 
-    const consolidatedLeaf: CriteriaNode = {
-      operation: matching[0].operation,
-      key: cloneCriteria(matching[0].key ?? null),
-    };
-    applyValueInvariant(consolidatedLeaf, merged);
+    // Rebuild children in place: emit each consolidated leaf at the position of
+    // its first member and drop the remaining members of that operation group;
+    // everything else (singleton operators, other attributes, sub-trees) stays.
+    const emitted = new Set<string>();
+    const newChildren: CriteriaNode[] = [];
+    for (const child of node.children) {
+      if (matches(child) && opsToMerge.has(child.operation)) {
+        if (!emitted.has(child.operation)) {
+          emitted.add(child.operation);
+          const consolidatedLeaf: CriteriaNode = {
+            operation: child.operation,
+            key: cloneCriteria(child.key ?? null),
+          };
+          applyValueInvariant(
+            consolidatedLeaf,
+            mergedByOp.get(child.operation) ?? []
+          );
+          newChildren.push(consolidatedLeaf);
+        }
+      } else {
+        newChildren.push(child);
+      }
+    }
 
-    const newChildren = [consolidatedLeaf, ...rest];
     if (newChildren.length === 1) {
       return newChildren[0]; // collapse OR with a single child
     }

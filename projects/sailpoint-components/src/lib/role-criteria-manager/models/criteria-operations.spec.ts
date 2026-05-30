@@ -171,15 +171,15 @@ describe('criteria-operations', () => {
       expect(result.changed).toBe(true);
     });
 
-    it('matched but unchanged when all values already present', () => {
+    it('skips (no patch) when all values are already present', () => {
       const m = membership(leaf('attribute.state', ['active', 'loa']));
       const result = addValues(m, {
         attribute: 'attribute.state',
         addValues: ['active'],
       });
-      expect(result.status).toBe('ready');
-      expect(result.changed).toBe(false);
-      expect((result.tree as CriteriaNode).values).toEqual(['active', 'loa']);
+      expect(result.status).toBe('skipped');
+      expect(result.reason).toBe('all values already present');
+      expect(result.patch).toEqual([]);
     });
 
     it('only updates the first matching leaf', () => {
@@ -380,15 +380,27 @@ describe('criteria-operations', () => {
       });
     });
 
-    it('leaves the tree unchanged when the value is absent', () => {
+    it('skips (no patch) when the value to remove is absent', () => {
       const m = membership(leaf('attribute.state', ['active', 'loa']));
       const result = removeCriteria(m, {
         attribute: 'attribute.state',
         mode: 'value',
         value: 'ghost',
       });
-      expect(result.changed).toBe(false);
-      expect((result.tree as CriteriaNode).values).toEqual(['active', 'loa']);
+      expect(result.status).toBe('skipped');
+      expect(result.reason).toBe('value not found');
+      expect(result.patch).toEqual([]);
+    });
+
+    it('skips (no patch) when the attribute to remove is absent', () => {
+      const m = membership(leaf('attribute.state', 'active'));
+      const result = removeCriteria(m, {
+        attribute: 'attribute.missing',
+        mode: 'attribute',
+      });
+      expect(result.status).toBe('skipped');
+      expect(result.reason).toBe('attribute not found');
+      expect(result.patch).toEqual([]);
     });
 
     it('skips when there is no criteria', () => {
@@ -542,6 +554,78 @@ describe('criteria-operations', () => {
       });
       expect(result.status).toBe('skipped');
       expect(result.reason).toBe('nothing to consolidate');
+    });
+
+    it('does NOT merge same-attribute siblings with different operations', () => {
+      const tree: CriteriaNode = {
+        operation: 'OR',
+        children: [
+          leaf('attribute.dept', 'sales', 'EQUALS'),
+          leaf('attribute.dept', 'eng', 'STARTS_WITH'),
+        ],
+      };
+      const result = consolidate(membership(tree), {
+        attribute: 'attribute.dept',
+      });
+      // Each operation appears once → nothing to consolidate; semantics preserved.
+      expect(result.status).toBe('skipped');
+      expect(result.reason).toBe('nothing to consolidate');
+    });
+
+    it('merges only same-operation siblings, leaving other operators separate', () => {
+      const tree: CriteriaNode = {
+        operation: 'OR',
+        children: [
+          leaf('attribute.dept', 'sales', 'EQUALS'),
+          leaf('attribute.dept', 'ops', 'EQUALS'),
+          leaf('attribute.dept', 'eng', 'STARTS_WITH'),
+        ],
+      };
+      const result = consolidate(membership(tree), {
+        attribute: 'attribute.dept',
+      });
+      expect(result.status).toBe('ready');
+      expect(result.tree).toEqual({
+        operation: 'OR',
+        children: [
+          {
+            operation: 'EQUALS',
+            key: { type: 'IDENTITY', property: 'attribute.dept' },
+            values: ['sales', 'ops'],
+          },
+          leaf('attribute.dept', 'eng', 'STARTS_WITH'),
+        ],
+      });
+    });
+
+    it('merges two distinct operation groups independently', () => {
+      const tree: CriteriaNode = {
+        operation: 'OR',
+        children: [
+          leaf('attribute.dept', 'sales', 'EQUALS'),
+          leaf('attribute.dept', 'ops', 'EQUALS'),
+          leaf('attribute.dept', 'eng-', 'STARTS_WITH'),
+          leaf('attribute.dept', 'qa-', 'STARTS_WITH'),
+        ],
+      };
+      const result = consolidate(membership(tree), {
+        attribute: 'attribute.dept',
+      });
+      expect(result.tree).toEqual({
+        operation: 'OR',
+        children: [
+          {
+            operation: 'EQUALS',
+            key: { type: 'IDENTITY', property: 'attribute.dept' },
+            values: ['sales', 'ops'],
+          },
+          {
+            operation: 'STARTS_WITH',
+            key: { type: 'IDENTITY', property: 'attribute.dept' },
+            values: ['eng-', 'qa-'],
+          },
+        ],
+      });
     });
 
     it('does not consolidate AND siblings', () => {
