@@ -43,6 +43,25 @@ test.describe('Check Home Page', () => {
     expect(windowState.isCrashed).toBeFalsy();
   });
 
+  // Regression guard: the renderer must actually bootstrap Angular. The
+  // index.html ships `<app-root>Loading...</app-root>`; if bootstrap fails
+  // (e.g. the renderer bundle calls Node's `require`, which is absent under
+  // contextIsolation:true), that placeholder text is never replaced and the
+  // app is a dead "Loading..." screen. This is the check that was missing
+  // when a non-booting app merged twice.
+  test('renderer bootstraps Angular (app-root is not stuck on "Loading...")', async () => {
+    // Wait for Angular to replace the placeholder, then assert on the result.
+    await firstWindow
+      .locator('app-root')
+      .filter({ hasNotText: 'Loading...' })
+      .first()
+      .waitFor({ state: 'attached', timeout: 20000 });
+
+    const appRootText = (await firstWindow.locator('app-root').innerText()).trim();
+    expect(appRootText.length).toBeGreaterThan(0);
+    expect(appRootText).not.toBe('Loading...');
+  });
+
   // test('Check Home Page design', async ({ browserName}) => {
   //   // Uncomment if you change the design of Home Page in order to create a new screenshot
   //   const screenshot = await firstWindow.screenshot({ path: '/tmp/home.png' });
