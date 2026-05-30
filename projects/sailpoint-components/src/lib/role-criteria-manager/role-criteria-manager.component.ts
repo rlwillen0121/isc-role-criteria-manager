@@ -30,8 +30,10 @@ import {
   countLeafNodes,
   countNodes,
   CriteriaNode,
+  isLeaf,
   LEAF_OPERATIONS,
   LeafOperation,
+  leafValues,
   MembershipSelector,
   parseCriteria,
 } from './models/criteria.model';
@@ -136,6 +138,8 @@ export class RoleCriteriaManagerComponent {
   // ----- Panel 2: Operation -----
   selectedTabIndex = 0;
   attributeOptions: string[] = [];
+  /** All distinct values for the currently-selected "Update" attribute, for the oldValue dropdown. */
+  oldValueOptions: string[] = [];
   loadingDetails = false;
   private readonly roleCache = new Map<string, RoleV2025>();
 
@@ -161,6 +165,8 @@ export class RoleCriteriaManagerComponent {
   dryRun = true;
   snapshot = true;
   readonly patchJsonExpanded = new Set<string>();
+  /** Identity counts for Preview: keyed by role id, before/after the operation. */
+  identityCounts = new Map<string, { before: number | null; after: number | null; loading: boolean }>();
 
   // ----- Simulation -----
   simulationResults: SimulationSummary | null = null;
@@ -391,6 +397,31 @@ export class RoleCriteriaManagerComponent {
     return [...set].sort();
   }
 
+  /** Called when the user changes the attribute in the Update tab — rebuilds oldValueOptions. */
+  onUpdateAttributeChange(): void {
+    const attr = this.updateForm.attribute.trim();
+    if (!attr) { this.oldValueOptions = []; return; }
+    const vals = new Set<string>();
+    for (const row of this.selectedRoles()) {
+      const full = this.roleCache.get(row.id);
+      const criteria = parseCriteria(full?.membership?.criteria ?? null);
+      this.collectValuesForAttribute(criteria, attr, vals);
+    }
+    this.oldValueOptions = [...vals].sort();
+    // Clear stale oldValue if it no longer exists in the new set
+    if (this.updateForm.oldValue && !vals.has(this.updateForm.oldValue)) {
+      this.updateForm.oldValue = '';
+    }
+  }
+
+  private collectValuesForAttribute(node: CriteriaNode | null, attr: string, out: Set<string>): void {
+    if (!node) return;
+    if (isLeaf(node) && node.key?.property === attr) {
+      leafValues(node).forEach(v => out.add(v));
+    }
+    node.children?.forEach(c => this.collectValuesForAttribute(c, attr, out));
+  }
+
   /** Attribute options filtered by the current input value. */
   filterAttributes(query: string): string[] {
     const q = (query ?? '').toLowerCase().trim();
@@ -473,6 +504,7 @@ export class RoleCriteriaManagerComponent {
       return;
     }
 
+    this.identityCounts.clear();
     this.previews = this.selectedRoles().map((row) => {
       const full = this.roleCache.get(row.id);
       const membership: MembershipSelector = {
@@ -480,12 +512,69 @@ export class RoleCriteriaManagerComponent {
         criteria: parseCriteria(full?.membership?.criteria ?? null),
         identities: full?.membership?.identities ?? null,
       };
-      return {
-        row,
-        before: membership.criteria ?? null,
-        result: applyOperation(membership, params),
-      };
+      const result = applyOperation(membership, params);
+      // Kick off identity count for actionable previews, non-blocking
+      if (result.status === 'ready') {
+        this.identityCounts.set(row.id, { before: null, after: null, loading: true });
+        void this.fetchIdentityCounts(row.id, membership.criteria ?? null, result.tree);
+      }
+      return { row, before: membership.criteria ?? null, result };
     });
+  }
+
+  private async fetchIdentityCounts(
+    roleId: string,
+    beforeTree: CriteriaNode | null,
+    afterTree: CriteriaNode | null
+  ): Promise<void> {
+    const entry = this.identityCounts.get(roleId);
+    if (!entry) return;
+    const [before, after] = await Promise.all([
+      this.countIdentitiesForCriteria(beforeTree),
+      this.countIdentitiesForCriteria(afterTree),
+    ]);
+    this.identityCounts.set(roleId, { before, after, loading: false });
+    this.cdr.detectChanges();
+  }
+
+  private async countIdentitiesForCriteria(tree: CriteriaNode | null): Promise<number | null> {
+    if (!tree) return 0;
+    try {
+      const query = this.criteriaTreeToSearchQuery(tree);
+      if (!query) return null;
+      const resp = await this.sdk.searchCount({
+        searchV2025: { query: { query }, indices: ['identities'] },
+      } as never);
+      return Number(resp?.headers?.['x-total-count'] ?? null);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Converts a CriteriaNode tree into an Elasticsearch query string suitable
+   * for the ISC Search API. Leaf nodes become `attribute:"value"` terms;
+   * composite nodes join children with AND/OR.
+   */
+  private criteriaTreeToSearchQuery(node: CriteriaNode | null): string {
+    if (!node) return '';
+    if (isLeaf(node)) {
+      const prop = node.key?.property ?? '';
+      const vals = leafValues(node);
+      if (!prop || vals.length === 0) return '';
+      const terms = vals.map(v => `${prop}:"${v}"`).join(' OR ');
+      return vals.length > 1 ? `(${terms})` : terms;
+    }
+    const children = (node.children ?? [])
+      .map(c => this.criteriaTreeToSearchQuery(c))
+      .filter(s => s.length > 0);
+    if (children.length === 0) return '';
+    const op = node.operation === 'AND' ? ' AND ' : ' OR ';
+    return children.length > 1 ? `(${children.join(op)})` : children[0];
+  }
+
+  identityCount(roleId: string): { before: number | null; after: number | null; loading: boolean } | null {
+    return this.identityCounts.get(roleId) ?? null;
   }
 
   actionablePreviews(): RolePreview[] {
@@ -798,6 +887,7 @@ export class RoleCriteriaManagerComponent {
     this.hasExecuted = false;
     this.dryRun = true;
     this.simulationResults = null;
+    this.identityCounts.clear();
     this.restoreMode = false;
     this.snapshotEntries = [];
     if (this.stepper) {
