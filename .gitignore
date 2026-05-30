@@ -6,6 +6,8 @@ dist/
 # Electron build output
 out/
 release/
+electron-dist/
+app-builds/
 *.dmg
 *.exe
 *.AppImage
@@ -18,8 +20,18 @@ release/
 *.key
 
 # Editor
-.vscode/
-.idea/
+.vscode/*
+.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
 *.suo
 *.user
 
@@ -30,6 +42,38 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+testem.log
 
 # TypeScript
 *.tsbuildinfo
+/out-tsc
+
+# Angular
+/.angular/cache
+/.sass-cache
+.eslintcache
+
+# Build artifacts
+main.js
+src/**/*.js
+*.js.map
+
+# e2e
+/e2e/*.js
+!/e2e/protractor.conf.js
+/e2e/*.map
+/e2e/tracing
+/e2e/screenshots
+
+# Misc
+/connect.lock
+/coverage
+/libpeerconnection.log
+/typings
+/tmp
+.config
+.claude
+CLAUDE.md
+openapi-generator-cli-*.jar
+openapi-generator-cli.jar
+/api-specs

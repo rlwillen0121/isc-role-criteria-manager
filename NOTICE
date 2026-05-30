@@ -1,0 +1,4 @@
+This repository incorporates code from the SailPoint UI Development Kit
+(https://github.com/sailpoint-oss/ui-development-kit), vendored at tag v1.3.1.
+The kit's README states it is distributed under the MIT License, though no
+LICENSE file was included in its repository at that tag.

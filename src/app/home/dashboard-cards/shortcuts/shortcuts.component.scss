@@ -1,0 +1,148 @@
+:host {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+mat-card {
+  height: 100%;
+  
+  mat-card-header {
+    margin-bottom: 16px;
+    
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      mat-icon {
+        color: var(--primary-color);
+      }
+    }
+  }
+  
+  mat-card-content {
+    padding: 0 16px 16px;
+  }
+}
+
+.shortcuts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.category-section {
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--divider-color);
+    
+    mat-icon {
+      color: var(--primary-color);
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+    
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+  }
+  
+  .shortcuts-grid {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    
+    .shortcut-item {
+      padding: 16px;
+      cursor: pointer;
+      text-align: center;
+      margin-top: auto;
+      margin-bottom: auto;
+
+      /* Center icon and label vertically */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px; /* space between icon and label */
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+        /* Ensure icon is centered with text */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .category-section {
+    .category-header {
+      h3 {
+        font-size: 14px;
+      }
+    }
+    
+    .shortcuts-grid {
+      gap: 12px;
+      
+      .shortcut-item {
+        padding: 12px;
+        
+        mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .shortcuts-container {
+    gap: 16px;
+  }
+  
+  .category-section {
+    .category-header {
+      h3 {
+        font-size: 13px;
+      }
+    }
+    
+    .shortcuts-grid {
+      gap: 8px;
+      
+      .shortcut-item {
+        padding: 8px;
+        
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+    }
+  }
+} 

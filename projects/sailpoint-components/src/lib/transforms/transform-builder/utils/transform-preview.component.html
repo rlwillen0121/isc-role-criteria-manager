@@ -1,0 +1,133 @@
+<div class="transform-preview-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Transform Preview</mat-card-title>
+      <mat-card-subtitle>Select a profile, identities, and test your transform</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="transformForm" (ngSubmit)="executeTransform()">
+        <!-- Profile Selection -->
+        <div class="form-section">
+          <h3 class="section-header">1. Select Identity Profile</h3>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Identity Profile</mat-label>
+            <mat-select formControlName="profileId" (selectionChange)="onProfileChange($event.value)">
+              @if (loadingProfiles) {
+                <mat-option>Loading profiles...</mat-option>
+              }
+              @if (!loadingProfiles && profiles.length === 0 && !profileError) {
+                <mat-option [value]="null">
+                  No profiles available
+                </mat-option>
+              }
+              @if (profileError) {
+                <mat-option [value]="null">
+                  Error loading profiles
+                </mat-option>
+              }
+              @for (profile of profiles; track profile) {
+                <mat-option [value]="profile.id">
+                  {{ profile.name }}
+                </mat-option>
+              }
+            </mat-select>
+            @if (transformForm.get('profileId')?.hasError('required')) {
+              <mat-error>
+                Please select a profile
+              </mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <!-- Identity Search -->
+        <div class="form-section">
+          <h3 class="section-header">2. Select Identities</h3>
+          <app-identity-search
+            [profileId]="transformForm.get('profileId')?.value"
+            [sdkService]="sdk"
+            (identitiesSelected)="onIdentitiesSelected($event)">
+          </app-identity-search>
+
+          <div class="selected-identities-summary">
+            @if (selectedIdentities.length === 0) {
+              <div class="no-identities-message">
+                <mat-icon>person_off</mat-icon>
+                <span>No identities selected</span>
+              </div>
+            }
+
+            @if (selectedIdentities.length > 0) {
+              <mat-chip-listbox>
+                @for (identity of selectedIdentities; track identity) {
+                  <mat-chip
+                    (removed)="identityService.removeSelectedIdentity(identity.id)">
+                    {{ identity.name }}
+                    <button matChipRemove>
+                      <mat-icon>cancel</mat-icon>
+                    </button>
+                  </mat-chip>
+                }
+              </mat-chip-listbox>
+            }
+          </div>
+        </div>
+
+        <!-- Transform Code -->
+        <div class="form-section">
+          <div class="code-header" (click)="toggleCodeEditor()">
+            <h3 class="section-header">Transform ({{transformName}})</h3>
+            <button mat-icon-button type="button">
+              <mat-icon>{{ codeExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+          </div>
+
+          @if (codeExpanded) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Transform Code</mat-label>
+              <textarea
+                matInput
+                rows="10"
+                placeholder="Enter your transform code here"
+                (blur)="onTransformCodeChange()"
+              >{{transformCode}}</textarea>
+            </mat-form-field>
+          }
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            mat-raised-button
+            color="primary"
+            [disabled]="transformForm.invalid || selectedIdentities.length === 0 || executingTransform"
+            >
+            <mat-icon>play_arrow</mat-icon>
+            Execute Transform
+          </button>
+
+          <button
+            type="button"
+            mat-stroked-button
+            (click)="resetForm()"
+            >
+            <mat-icon>refresh</mat-icon>
+            Reset
+          </button>
+        </div>
+      </form>
+
+      <!-- Progress Indicator
+      <div *ngIf="executingTransform" class="executing-transform">
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        <span>Executing transform...</span>
+      </div> -->
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Results Section -->
+  <div class="results-section">
+    <app-transform-results [results]="transformResults"></app-transform-results>
+  </div>
+</div>

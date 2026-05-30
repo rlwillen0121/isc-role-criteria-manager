@@ -1,0 +1,27 @@
+{
+  "components": {
+    "enabled": ["component-selector"]
+  },
+  "themes": {
+    "light": {
+      "primary": "#0071ce",
+      "secondary": "#6c63ff",
+      "primaryText": "#415364",
+      "secondaryText": "#415364",
+      "hoverText": "#ffffff",
+      "background": "#ffffff",
+      "logo": "assets/icons/logo.png"
+    },
+    "dark": {
+      "primary": "#54c0e8",
+      "secondary": "#f48fb1",
+      "primaryText": "#ffffff",
+      "secondaryText": "#cccccc",
+      "hoverText": "#54c0e8",
+      "background": "#151316",
+      "logo": "assets/icons/logo-dark.png"
+    }
+  },
+  "currentTheme": "light",
+  "version": "1.0.0"
+}
