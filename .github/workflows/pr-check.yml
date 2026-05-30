@@ -33,6 +33,23 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Angular build check
-        run: npx ng build --configuration production
+        # --base-href ./ is required for Electron file:// loading.
+        # Without it assets are referenced as /main.js (absolute) which
+        # fails when the renderer loads index.html from disk.
+        run: npx ng build --configuration production --base-href ./
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Compile Electron main process
+        run: npm run electron:tsc
+
+      - name: Install Playwright + Electron system deps
+        run: |
+          npx playwright install chromium --with-deps
+          sudo apt-get install -y xvfb libgtk-3-0 libnotify-dev libnss3 libxss1 libasound2 libxtst6
+
+      - name: Bootstrap smoke test (Electron renderer must not be stuck on Loading...)
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x720x24" npx playwright test -c e2e/playwright.config.ts e2e/main.spec.ts --timeout 90000
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          CI: 'true'

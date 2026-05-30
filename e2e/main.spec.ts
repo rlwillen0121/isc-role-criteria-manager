@@ -8,13 +8,32 @@ test.describe('Check Home Page', () => {
   let context: BrowserContext;
 
   test.beforeAll( async () => {
-    app = await electron.launch({ 
-      args: [PATH.join(__dirname, '../electron-dist/main.js')],
+    // On Linux CI containers, Electron needs several flags to avoid renderer
+    // hangs caused by GPU init, /dev/shm exhaustion, and kernel sandbox limits.
+    const extraArgs = process.env['CI']
+      ? [
+          '--disable-gpu',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-software-rasterizer',
+          '--no-first-run',
+        ]
+      : [];
+    app = await electron.launch({
+      args: [PATH.join(__dirname, '../electron-dist/main.js'), ...extraArgs],
       cwd: PATH.join(__dirname, '..')
     });
     context = app.context();
     await context.tracing.start({ screenshots: true, snapshots: true });
     firstWindow = await app.firstWindow();
+
+    // Log renderer console output in CI to help diagnose bootstrap failures
+    if (process.env['CI']) {
+      firstWindow.on('console', (msg) => console.log('[renderer]', msg.type(), msg.text()));
+      firstWindow.on('pageerror', (err) => console.error('[renderer error]', err.message));
+    }
+
     await firstWindow.waitForLoadState('domcontentloaded');
   });
 
@@ -55,7 +74,8 @@ test.describe('Check Home Page', () => {
       .locator('app-root')
       .filter({ hasNotText: 'Loading...' })
       .first()
-      .waitFor({ state: 'attached', timeout: 20000 });
+      // Allow extra time on CI — Linux runners are slower than local macOS
+      .waitFor({ state: 'attached', timeout: process.env['CI'] ? 60000 : 20000 });
 
     const appRootText = (await firstWindow.locator('app-root').innerText()).trim();
     expect(appRootText.length).toBeGreaterThan(0);

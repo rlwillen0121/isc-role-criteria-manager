@@ -77,3 +77,4 @@ CLAUDE.md
 openapi-generator-cli-*.jar
 openapi-generator-cli.jar
 /api-specs
+e2e/smoke-live-execute.spec.ts

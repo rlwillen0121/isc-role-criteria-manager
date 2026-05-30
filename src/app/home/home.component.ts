@@ -88,7 +88,6 @@ type ComponentState = {
     FormsModule,
     SharedModule,
     WebAuthComponent,
-    OAuthDialogComponent
   ]
 })
 export class HomeComponent implements OnInit, OnDestroy {
