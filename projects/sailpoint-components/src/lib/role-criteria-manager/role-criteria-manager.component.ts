@@ -280,7 +280,10 @@ export class RoleCriteriaManagerComponent {
         limit: PAGE_SIZE,
         offset,
       });
-      const page = resp?.data ?? [];
+      if (resp?.status !== undefined && resp.status >= 400) {
+        throw resp;
+      }
+      const page = Array.isArray(resp?.data) ? resp.data : [];
       if (page.length === 0) {
         break;
       }
