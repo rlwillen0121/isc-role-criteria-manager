@@ -1,0 +1,52 @@
+name: Release
+
+# STUB — not yet wired. Runs on version tags; builds unsigned installers via
+# electron-builder and attaches them to the GitHub Release.
+# TODO: wire GITHUB_TOKEN permissions and electron-builder config before enabling.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            artifact: '*.AppImage'
+          - os: windows-2022
+            artifact: '*.exe'
+          - os: macos-14
+            artifact: '*.dmg'
+    runs-on: ${{ matrix.os }}
+    if: false  # remove this line to enable
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install platform deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Build unsigned installer
+        run: npm run build:publish
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No code-signing env vars set → unsigned build

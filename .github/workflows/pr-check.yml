@@ -1,0 +1,33 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build component library
+        run: npm run build:components
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Angular build check
+        run: npx ng build --configuration production
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'

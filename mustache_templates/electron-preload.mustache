@@ -1,0 +1,16 @@
+const { ipcRenderer } = require('electron');
+
+const sdkPreload = {
+    // --- GENERATED SDK METHODS START ---
+    {{#apiInfo}}{{#apis}}{{#operations}}{{#operation}}{{operationId}}{{operationSuffix}}: ({{#allParams.0}}request{{/allParams.0}}) => ipcRenderer.invoke('{{#lambda.kebabcase}}{{operationId}}{{operationSuffix}}{{/lambda.kebabcase}}'{{#allParams.0}}, request{{/allParams.0}}),
+    {{/operation}}{{/operations}}{{/apis}}{{/apiInfo}}
+    // --- GENERATED SDK METHODS END ---
+
+    genericGet: (request) => ipcRenderer.invoke('generic-get', request),
+    genericPost: (request) => ipcRenderer.invoke('generic-post', request),
+    genericPut: (request) => ipcRenderer.invoke('generic-put', request),
+    genericPatch: (request) => ipcRenderer.invoke('generic-patch', request),
+    genericDelete: (request) => ipcRenderer.invoke('generic-delete', request),
+};
+
+module.exports = sdkPreload;

@@ -1,0 +1,70 @@
+.component-selector-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.toolbar-title {
+  margin-left: 16px;
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.description {
+  margin-bottom: 24px;
+  color: var(--theme-primary-text);
+  font-size: 16px;
+}
+
+.components-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.component-card {
+  max-width: 400px;
+  background-color: var(--theme-background);
+}
+
+.component-card mat-card-header {
+  margin-bottom: 16px;
+}
+
+.component-card mat-card-content {
+  margin-bottom: 60px;
+  padding-bottom: 25px;
+}
+
+.component-card mat-card-actions {
+  padding-top: 8px;
+}
+
+.card-actions {
+  align-items: center;
+  justify-content: space-between;
+  position: absolute;
+  bottom: 0;
+  right: 2px;
+  align-items: center;
+  justify-content: space-between; // or use `flex-end` if only one item
+}
+
+.spacer {
+  flex: 1;
+}
+
+::ng-deep .mdc-switch__icon--on {
+  fill: var(--theme-secondary) !important;
+}
+
+.mat-mdc-card-avatar {
+  border-radius: 0 !important;
+  font-size: 30px !important;
+}
+
+

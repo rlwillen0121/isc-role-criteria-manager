@@ -1,0 +1,96 @@
+<div class="theme-picker-container">
+  <mat-toolbar color="primary">
+    <mat-icon>palette</mat-icon>
+    <span class="toolbar-title">{{ title }}</span>
+  </mat-toolbar>
+
+  <div class="content">
+    <div class="theme-picker">
+      <h2>Theme Customization</h2>
+
+      @if (loading) {
+        <div class="spinner-container">
+          <mat-spinner diameter="75"></mat-spinner>
+        </div>
+      }
+
+      <!-- Mode selector -->
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Mode</mat-label>
+        <mat-select [(value)]="mode" (selectionChange)="onModeChange()">
+          <mat-option value="light">Light</mat-option>
+          <mat-option value="dark">Dark</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Color + Hex pairs -->
+      @for (field of colorFields; track field) {
+        <div class="form-group">
+          <input
+            class="color-swatch"
+            matInput
+            type="color"
+            [(ngModel)]="colors[field.key]"
+            />
+          <mat-form-field appearance="outline" class="hex-field">
+            <mat-label>{{ field.label }} Hex</mat-label>
+            <input
+              matInput
+              type="text"
+              [(ngModel)]="colors[field.key]"
+              maxlength="7"
+              pattern="#[A-Fa-f0-9]{6}"
+              />
+          </mat-form-field>
+        </div>
+      }
+
+      <div class="form-group">
+        <mat-form-field appearance="outline" class="upload-logo-label">
+          <mat-label>Upload Logo ({{ mode }})</mat-label>
+
+          <input
+            matInput
+            [value]="selectedLogoFileName || 'No file chosen…'"
+            readonly
+            />
+          <div matSuffix class="logo-suffix">
+            <button
+              class="upload-button"
+              mat-icon-button
+              aria-label="Select logo file"
+              (click)="fileInput.click()"
+              >
+              <mat-icon>upload</mat-icon>
+            </button>
+
+            @if (selectedLogoFileName) {
+              <button
+                class="reset-button"
+                mat-icon-button
+                aria-label="Reset to default"
+                (click)="onResetLogo()"
+                >
+                <mat-icon>autorenew</mat-icon>
+              </button>
+            }
+          </div>
+
+          <input
+            #fileInput
+            type="file"
+            accept="image/png"
+            hidden
+            (change)="onFileSelected($event)"
+            />
+        </mat-form-field>
+      </div>
+
+      <div class="actions">
+        <button mat-raised-button color="primary" (click)="apply()">
+          Apply
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

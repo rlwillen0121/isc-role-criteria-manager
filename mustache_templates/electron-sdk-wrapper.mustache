@@ -1,0 +1,122 @@
+import * as sdk from 'sailpoint-api-client';
+import { AxiosResponse } from 'axios';
+import axios from 'axios';
+
+/* tslint:disable */
+/* eslint-disable */
+{{>licenseInfo}}
+
+type ApiResponse<T> = {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+};
+
+async function handleApiCall<T>(
+  apiCall: () => Promise<AxiosResponse<T>>
+): Promise<ApiResponse<T>> {
+  try {
+    const response = await apiCall();
+    return {
+      data: response.data,
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers as Record<string, string>,
+    };
+  } catch (error) {
+    console.error('API call error:', error);
+    return generateErrorResponse(error);
+  }
+}
+
+function generateErrorResponse(error: unknown): ApiResponse<any> {
+  // Check if it's an Axios error with a response
+  if (axios.isAxiosError(error) && error.response) {
+    // Return the actual error response from the API
+    return {
+      data: error.response.data,
+      status: error.response.status,
+      statusText: error.response.statusText,
+      headers: error.response.headers as Record<string, string>,
+    };
+  }
+  
+  // Handle generic Error instances
+  if (error instanceof Error) {
+    return {
+      data: { error: error.message },
+      status: 500,
+      statusText: error.message,
+      headers: {},
+    };
+  }
+  
+  // Fallback for unknown errors
+  return {
+    data: { error: 'Unknown error occurred' },
+    status: 500,
+    statusText: 'Unknown error occurred',
+    headers: {},
+  };
+}
+
+
+// --- GENERATED SDK METHODS START ---
+{{#apiInfo}}{{#apis}}
+{{#operations}}
+{{#operation}}
+/**
+ * {{&notes}}
+ {{#summary}}
+ * @summary {{&summary}}
+ {{/summary}}
+{{#useSingleRequestParameter}}
+ {{#allParams.0}}
+ * @param {{=<% %>=}}{<%& classname %><%& operationIdCamelCase %>Request}<%={{ }}=%> requestParameters Request parameters.
+ {{/allParams.0}}
+{{/useSingleRequestParameter}}
+{{^useSingleRequestParameter}}
+ {{#allParams}}
+ * @param {{=<% %>=}}{<%#isEnum%><%&datatypeWithEnum%><%/isEnum%><%^isEnum%><%&dataType%><%#isNullable%> | null<%/isNullable%><%/isEnum%>}<%={{ }}=%> {{^required}}[{{/required}}{{paramName}}{{^required}}]{{/required}} {{description}}
+ {{/allParams}}
+{{/useSingleRequestParameter}}
+ * @param {*} [axiosOptions] Override http request option.{{#isDeprecated}}
+ * @deprecated{{/isDeprecated}}
+ * @throws {RequiredError}
+ */
+{{#useSingleRequestParameter}}
+export const {{nickname}}{{operationSuffix}} = ({{#allParams.0}}requestParameters: sdk.{{classname}}{{operationIdCamelCase}}Request{{^hasRequiredParams}} = {}{{/hasRequiredParams}}, {{/allParams.0}}apiConfig: sdk.Configuration): Promise<ApiResponse<{{#isArray}}Array<{{#returnProperty}}{{^isPrimitiveType}}sdk.{{/isPrimitiveType}}{{/returnProperty}}{{returnBaseType}}>{{/isArray}}{{^isArray}}{{#returnProperty}}{{#isPrimitiveType}}{{returnType}}{{/isPrimitiveType}}{{/returnProperty}}{{#returnProperty}}{{^isPrimitiveType}}sdk.{{returnType}}{{/isPrimitiveType}}{{/returnProperty}}{{/isArray}}{{^returnType}}void{{/returnType}}>> => {
+    const {{#lambda.lowercase}}{{classname}}{{/lambda.lowercase}} = new sdk.{{classname}}(apiConfig);
+    return handleApiCall(() => {{#lambda.lowercase}}{{classname}}{{/lambda.lowercase}}.{{nickname}}({{#allParams.0}}requestParameters{{/allParams.0}}));
+}
+{{/useSingleRequestParameter}}
+{{/operation}}
+{{/operations}}
+{{/apis}}{{/apiInfo}}
+// --- GENERATED SDK METHODS END ---
+
+export const genericGet = (requestParameters: sdk.DefaultApiGenericGetRequest, apiConfig: sdk.Configuration): Promise<ApiResponse<any>> => {
+    const axiosInstance = new sdk.DefaultApi(apiConfig);
+    return handleApiCall(() => axiosInstance.genericGet(requestParameters));
+}
+
+export const genericPost = (requestParameters: sdk.DefaultApiGenericPostRequest, apiConfig: sdk.Configuration): Promise<ApiResponse<any>> => {
+    const axiosInstance = new sdk.DefaultApi(apiConfig);
+    return handleApiCall(() => axiosInstance.genericPost(requestParameters));
+}
+
+export const genericPut = (requestParameters: sdk.DefaultApiGenericPutRequest, apiConfig: sdk.Configuration): Promise<ApiResponse<any>> => {
+    const axiosInstance = new sdk.DefaultApi(apiConfig);
+    return handleApiCall(() => axiosInstance.genericPut(requestParameters));
+}
+
+export const genericPatch = (requestParameters: sdk.DefaultApiGenericPatchRequest, apiConfig: sdk.Configuration): Promise<ApiResponse<any>> => {
+    const axiosInstance = new sdk.DefaultApi(apiConfig);
+    return handleApiCall(() => axiosInstance.genericPatch(requestParameters));
+}
+
+export const genericDelete = (requestParameters: sdk.DefaultApiGenericDeleteRequest, apiConfig: sdk.Configuration): Promise<ApiResponse<any>> => {
+    const axiosInstance = new sdk.DefaultApi(apiConfig);
+    return handleApiCall(() => axiosInstance.genericDelete(requestParameters));
+}
