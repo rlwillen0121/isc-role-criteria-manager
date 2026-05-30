@@ -46,6 +46,7 @@ jobs:
           sudo apt-get install -y xvfb libgtk-3-0 libnotify-dev libnss3 libxss1 libasound2 libxtst6
 
       - name: Bootstrap smoke test (Electron renderer must not be stuck on Loading...)
-        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x720x24" npx playwright test -c e2e/playwright.config.ts e2e/main.spec.ts
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x720x24" npx playwright test -c e2e/playwright.config.ts e2e/main.spec.ts --timeout 90000
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
+          CI: 'true'

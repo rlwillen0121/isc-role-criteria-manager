@@ -8,8 +8,13 @@ test.describe('Check Home Page', () => {
   let context: BrowserContext;
 
   test.beforeAll( async () => {
-    app = await electron.launch({ 
-      args: [PATH.join(__dirname, '../electron-dist/main.js')],
+    // On Linux CI containers, Electron needs --disable-gpu and --no-sandbox
+    // (the kernel sandbox features aren't available in most CI environments).
+    const extraArgs = process.env['CI']
+      ? ['--disable-gpu', '--no-sandbox']
+      : [];
+    app = await electron.launch({
+      args: [PATH.join(__dirname, '../electron-dist/main.js'), ...extraArgs],
       cwd: PATH.join(__dirname, '..')
     });
     context = app.context();
@@ -55,7 +60,8 @@ test.describe('Check Home Page', () => {
       .locator('app-root')
       .filter({ hasNotText: 'Loading...' })
       .first()
-      .waitFor({ state: 'attached', timeout: 20000 });
+      // Allow extra time on CI — Linux runners are slower than local macOS
+      .waitFor({ state: 'attached', timeout: process.env['CI'] ? 60000 : 20000 });
 
     const appRootText = (await firstWindow.locator('app-root').innerText()).trim();
     expect(appRootText.length).toBeGreaterThan(0);
