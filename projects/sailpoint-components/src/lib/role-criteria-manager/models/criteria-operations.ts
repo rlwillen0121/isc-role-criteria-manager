@@ -29,6 +29,7 @@ import {
   LeafOperation,
   leafValues,
   MembershipSelector,
+  parseCriteria,
 } from './criteria.model';
 
 /** A single RFC-6902 JSON Patch operation against the role. */
@@ -62,7 +63,7 @@ function skipped(reason: string): OperationResult {
  * Build the `/membership` patch from a new tree and the original membership.
  * `hadCriteria` controls add-vs-replace; a `null` tree yields a `remove`.
  */
-function buildMembershipPatch(
+export function buildMembershipPatch(
   newTree: CriteriaNode | null,
   membership: MembershipSelector,
   hadCriteria: boolean
@@ -453,6 +454,38 @@ export function consolidate(
     status: 'ready',
     tree: newTree,
     patch: buildMembershipPatch(newTree, membership, true),
+    changed: true,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Snapshot restore
+// ---------------------------------------------------------------------------
+
+export interface SnapshotEntry {
+  id: string;
+  name: string;
+  membership: MembershipSelector | null;
+}
+
+export function restoreFromSnapshot(
+  snapshot: SnapshotEntry,
+  current: MembershipSelector
+): OperationResult {
+  if (!snapshot.membership) {
+    return { status: 'skipped', reason: 'no snapshot membership', tree: current.criteria ?? null, patch: [], changed: false };
+  }
+  const snapJson = JSON.stringify(snapshot.membership);
+  const currJson = JSON.stringify(current);
+  if (snapJson === currJson) {
+    return { status: 'skipped', reason: 'already matches snapshot', tree: current.criteria ?? null, patch: [], changed: false };
+  }
+  const newTree = parseCriteria(snapshot.membership.criteria ?? null);
+  const hadCriteria = !!current.criteria;
+  return {
+    status: 'ready',
+    tree: newTree,
+    patch: buildMembershipPatch(newTree, snapshot.membership as MembershipSelector, hadCriteria),
     changed: true,
   };
 }

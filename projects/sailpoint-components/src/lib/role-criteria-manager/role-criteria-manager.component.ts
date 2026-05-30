@@ -1,4 +1,5 @@
 import { ChangeDetectorRef, Component, ViewChild } from '@angular/core';
+import { JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,6 +27,7 @@ import { ElectronApiFactoryService } from '../services/electron-api-factory.serv
 import { CriteriaTreeComponent } from './criteria-tree/criteria-tree.component';
 import {
   collectLeafAttributes,
+  countLeafNodes,
   countNodes,
   CriteriaNode,
   LEAF_OPERATIONS,
@@ -37,6 +39,8 @@ import {
   applyOperation,
   OperationParams,
   OperationResult,
+  SnapshotEntry,
+  restoreFromSnapshot,
 } from './models/criteria-operations';
 
 /** A role row shown in the Target panel table. */
@@ -71,6 +75,13 @@ type OperationTab =
   | 'remove'
   | 'consolidate';
 
+interface SimulationSummary {
+  total: number;
+  wouldChange: number;
+  wouldSkip: number;
+  skipReasons: Record<string, number>;
+}
+
 const PAGE_SIZE = 250;
 const LARGE_RESULT_THRESHOLD = 1000;
 
@@ -103,6 +114,7 @@ const LARGE_RESULT_THRESHOLD = 1000;
     MatTabsModule,
     MatToolbarModule,
     CriteriaTreeComponent,
+    JsonPipe,
   ],
   templateUrl: './role-criteria-manager.component.html',
   styleUrl: './role-criteria-manager.component.scss',
@@ -145,6 +157,15 @@ export class RoleCriteriaManagerComponent {
   previews: RolePreview[] = [];
   dryRun = true;
   snapshot = true;
+  readonly patchJsonExpanded = new Set<string>();
+
+  // ----- Simulation -----
+  simulationResults: SimulationSummary | null = null;
+  simulating = false;
+
+  // ----- Restore -----
+  restoreMode = false;
+  private snapshotEntries: SnapshotEntry[] = [];
 
   // ----- Panel 4: Results -----
   executing = false;
@@ -171,6 +192,7 @@ export class RoleCriteriaManagerComponent {
       filePath?: string;
       error?: string;
     }>;
+    browseForJsonFile: () => Promise<{ success: boolean; canceled?: boolean; content?: string; filePath?: string; error?: string }>;
   } {
     return this.apiFactory.getApi() as never;
   }
@@ -200,6 +222,9 @@ export class RoleCriteriaManagerComponent {
   toggleAll(checked: boolean): void {
     this.roleRows.forEach((r) => (r.selected = checked));
   }
+
+  selectAll(): void { this.toggleAll(true); }
+  clearSelection(): void { this.toggleAll(false); }
 
   async findRoles(): Promise<void> {
     const text = this.searchText.trim();
@@ -244,6 +269,7 @@ export class RoleCriteriaManagerComponent {
           role,
         };
       });
+      if (this.mode === 'bulk' && roles.length <= 50) { this.toggleAll(true); }
 
       if (this.roleRows.length === 0) {
         this.snackBar.open('No roles matched.', 'Close', { duration: 3000 });
@@ -320,7 +346,7 @@ export class RoleCriteriaManagerComponent {
     if (event.selectedIndex === 1) {
       void this.loadSelectedDetails();
     } else if (event.selectedIndex === 2) {
-      this.computePreviews();
+      if (!this.restoreMode) { this.computePreviews(); }
     }
   }
 
@@ -465,6 +491,22 @@ export class RoleCriteriaManagerComponent {
 
   skippedPreviews(): RolePreview[] {
     return this.previews.filter((p) => p.result.status === 'skipped');
+  }
+
+  togglePatchJson(id: string): void {
+    if (this.patchJsonExpanded.has(id)) {
+      this.patchJsonExpanded.delete(id);
+    } else {
+      this.patchJsonExpanded.add(id);
+    }
+  }
+
+  isPatchJsonExpanded(id: string): boolean {
+    return this.patchJsonExpanded.has(id);
+  }
+
+  leafChangeCount(preview: RolePreview): number {
+    return countLeafNodes(preview.result.tree) - countLeafNodes(preview.before);
   }
 
   get canExecute(): boolean {
@@ -614,11 +656,129 @@ export class RoleCriteriaManagerComponent {
     }
   }
 
+  skipReasonEntries(): { reason: string; count: number }[] {
+    if (!this.simulationResults) return [];
+    return Object.entries(this.simulationResults.skipReasons).map(([reason, count]) => ({ reason, count }));
+  }
+
+  async simulate(): Promise<void> {
+    const params = this.buildParams();
+    if (!params) {
+      this.snackBar.open('Fill in operation parameters first.', 'Close', { duration: 3000 });
+      return;
+    }
+    if (this.roleRows.length > LARGE_RESULT_THRESHOLD) {
+      const proceed = await this.confirm(
+        'Large simulation',
+        `Simulating against ${this.roleRows.length} roles requires fetching full details for each. Continue?`,
+        'Continue',
+        'Cancel'
+      );
+      if (!proceed) return;
+    }
+    this.simulating = true;
+    this.simulationResults = null;
+    this.cdr.detectChanges();
+    try {
+      for (const row of this.roleRows) {
+        if (!this.roleCache.has(row.id)) {
+          try {
+            const resp = await this.sdk.getRole({ id: row.id });
+            if (resp?.data) this.roleCache.set(row.id, resp.data);
+          } catch { /* skip unfetchable roles */ }
+        }
+      }
+      let wouldChange = 0;
+      let wouldSkip = 0;
+      const skipReasons: Record<string, number> = {};
+      for (const row of this.roleRows) {
+        const full = this.roleCache.get(row.id);
+        const membership: MembershipSelector = {
+          type: full?.membership?.type ?? null,
+          criteria: parseCriteria(full?.membership?.criteria ?? null),
+          identities: full?.membership?.identities ?? null,
+        };
+        const result = applyOperation(membership, params);
+        if (result.status === 'ready') {
+          wouldChange++;
+        } else {
+          wouldSkip++;
+          const reason = result.reason ?? 'skipped';
+          skipReasons[reason] = (skipReasons[reason] ?? 0) + 1;
+        }
+      }
+      this.simulationResults = { total: this.roleRows.length, wouldChange, wouldSkip, skipReasons };
+    } finally {
+      this.simulating = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async loadAndRestoreSnapshot(): Promise<void> {
+    const res = await this.api.browseForJsonFile();
+    if (!res?.success) {
+      if (!res?.canceled) {
+        this.snackBar.open(res?.error ?? 'Failed to open file.', 'Close', { duration: 5000 });
+      }
+      return;
+    }
+    let entries: SnapshotEntry[];
+    try {
+      entries = JSON.parse(res.content ?? '');
+      if (!Array.isArray(entries) || !entries.every(e => e.id && 'membership' in e)) {
+        throw new Error('Invalid snapshot format');
+      }
+    } catch {
+      this.snackBar.open('Invalid snapshot file — expected array of {id, name, membership}.', 'Close', { duration: 6000 });
+      return;
+    }
+    this.snapshotEntries = entries;
+    this.previews = [];
+    this.cdr.detectChanges();
+
+    // Fetch current state for each snapshot entry
+    const rows: RoleRow[] = [];
+    for (const entry of entries) {
+      let current: import('sailpoint-api-client').RoleV2025 | undefined = this.roleCache.get(entry.id);
+      if (!current) {
+        try {
+          const resp = await this.sdk.getRole({ id: entry.id });
+          if (resp?.data) {
+            current = resp.data;
+            this.roleCache.set(entry.id, current);
+          }
+        } catch { /* handled below */ }
+      }
+      const membership: MembershipSelector = current
+        ? { type: current.membership?.type ?? null, criteria: parseCriteria(current.membership?.criteria ?? null), identities: current.membership?.identities ?? null }
+        : { type: null, criteria: null, identities: null };
+      const row: RoleRow = {
+        id: entry.id,
+        name: entry.name ?? entry.id,
+        membershipType: current?.membership?.type ?? '—',
+        nodeCount: countNodes(parseCriteria(current?.membership?.criteria ?? null)),
+        selected: true,
+        role: current ?? ({} as never),
+      };
+      rows.push(row);
+      const result = current
+        ? restoreFromSnapshot(entry, membership)
+        : { status: 'skipped' as const, reason: 'role not found in tenant', tree: null, patch: [], changed: false };
+      this.previews.push({ row, before: membership.criteria ?? null, result });
+    }
+    this.restoreMode = true;
+    this.stepper!.selectedIndex = 2;
+    this.cdr.detectChanges();
+  }
+
   runAgain(): void {
     this.previews = [];
     this.results = [];
     this.hasExecuted = false;
     this.dryRun = true;
+    this.simulationResults = null;
+    this.restoreMode = false;
+    this.snapshotEntries = [];
     if (this.stepper) {
       this.stepper.selectedIndex = 1;
     }

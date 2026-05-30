@@ -198,6 +198,12 @@ export function countNodes(node: CriteriaNode | null): number {
   return count;
 }
 
+export function countLeafNodes(node: CriteriaNode | null): number {
+  if (!node) return 0;
+  if (!node.children || node.children.length === 0) return 1;
+  return node.children.reduce((acc, child) => acc + countLeafNodes(child), 0);
+}
+
 /** Build a new leaf node from an attribute, operation and value list. */
 export function buildLeafNode(
   property: string,
