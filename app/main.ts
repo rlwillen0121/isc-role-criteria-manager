@@ -284,6 +284,32 @@ try {
     }
   });
 
+  ipcMain.handle(
+    'save-file',
+    async (event, options: { defaultPath?: string; content: string }) => {
+      try {
+        const result = await dialog.showSaveDialog(win!, {
+          title: 'Save File',
+          defaultPath: options?.defaultPath,
+          filters: [
+            { name: 'JSON', extensions: ['json'] },
+            { name: 'All Files', extensions: ['*'] },
+          ],
+        });
+
+        if (result.canceled || !result.filePath) {
+          return { success: false, canceled: true };
+        }
+
+        fs.writeFileSync(result.filePath, options?.content ?? '', 'utf-8');
+        return { success: true, filePath: result.filePath };
+      } catch (error) {
+        console.error('Error saving file:', error);
+        return { success: false, error: 'Failed to save file' };
+      }
+    }
+  );
+
   //#endregion
 
   // Setup modular IPC handlers

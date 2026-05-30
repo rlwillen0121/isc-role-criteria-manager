@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // file browser
   browseForFile: () => ipcMain.invoke('browse-for-file'),
+  saveFile: (options: { defaultPath?: string; content: string }) =>
+    ipcMain.invoke('save-file', options),
 
   // Modular preloaders
   ...discoursePreloader,

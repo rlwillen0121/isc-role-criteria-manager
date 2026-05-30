@@ -63,6 +63,14 @@ export class ConfigService {
       description: 'Manage theme picker in SailPoint.',
       enabled: false,
     },
+    {
+      name: 'role-criteria-manager',
+      displayName: 'Role Criteria Manager',
+      route: '/role-criteria-manager',
+      icon: 'account_tree',
+      description: 'Bulk-edit ISC role membership criteria.',
+      enabled: false,
+    },
     ];
 
   // Default theme configurations

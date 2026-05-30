@@ -30,6 +30,14 @@ export interface ElectronAPIInterface {
   readConfig: () => Promise<any>;
   writeConfig: (config: any) => Promise<any>;
 
+  // File save (Electron save dialog; browser falls back to a Blob download)
+  saveFile: (options: { defaultPath?: string; content: string }) => Promise<{
+    success: boolean;
+    canceled?: boolean;
+    filePath?: string;
+    error?: string;
+  }>;
+
   // Discourse/CoLab marketplace
   getColabPosts: (filter: FilterConfig, limit?: number) => Promise<ColabPostsResponse>;
   getColabPostsByCategory: (category: ColabCategory, limit?: number) => Promise<ColabPostsResponse>;
@@ -469,6 +477,33 @@ export class WebApiService implements ElectronAPIInterface, OnDestroy {
 
   async writeConfig(config: any): Promise<any> {
     return this.apiCall('config', 'POST', { config });
+  }
+
+  // File save — browser fallback triggers a client-side Blob download since
+  // there is no native save dialog outside Electron.
+  saveFile(options: { defaultPath?: string; content: string }): Promise<{
+    success: boolean;
+    canceled?: boolean;
+    filePath?: string;
+    error?: string;
+  }> {
+    try {
+      const blob = new Blob([options.content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = options.defaultPath || 'download.json';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      return Promise.resolve({ success: true, filePath: anchor.download });
+    } catch (error) {
+      return Promise.resolve({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to save file',
+      });
+    }
   }
 
   // Discourse/CoLab Marketplace methods

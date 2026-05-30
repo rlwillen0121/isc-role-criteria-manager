@@ -45,6 +45,9 @@
       "@angular/material/grid-list": ["node_modules/@angular/material/types/grid-list.d.ts"],
       "@angular/material/radio": ["node_modules/@angular/material/types/radio.d.ts"],
       "@angular/material/autocomplete": ["node_modules/@angular/material/types/autocomplete.d.ts"],
+      "@angular/material/tree": ["node_modules/@angular/material/types/tree.d.ts"],
+      "@angular/cdk/tree": ["node_modules/@angular/cdk/types/tree.d.ts"],
+      "@angular/cdk/stepper": ["node_modules/@angular/cdk/types/stepper.d.ts"],
       "sailpoint-components": ["projects/sailpoint-components/src/public-api"]
     }
   },
