@@ -1371,12 +1371,8 @@ export class TransformBuilderComponent implements OnInit, OnDestroy {
     return Object.keys(branches || {});
   }
 
-  public openVelocityEditor(
-    _properties: Properties,
-    _name: string,
-    _event: Event,
-    _context: StepEditorContext
-  ) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public openVelocityEditor(properties: Properties, name: string, event: Event, context: StepEditorContext): void {
     // velocity-editor-dialog removed; feature not available in this build
   }
 
