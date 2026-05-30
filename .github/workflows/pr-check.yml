@@ -33,7 +33,10 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Angular build check
-        run: npx ng build --configuration production
+        # --base-href ./ is required for Electron file:// loading.
+        # Without it assets are referenced as /main.js (absolute) which
+        # fails when the renderer loads index.html from disk.
+        run: npx ng build --configuration production --base-href ./
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
