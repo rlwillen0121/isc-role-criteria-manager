@@ -36,3 +36,16 @@ jobs:
         run: npx ng build --configuration production
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Compile Electron main process
+        run: npm run electron:tsc
+
+      - name: Install Playwright + Electron system deps
+        run: |
+          npx playwright install chromium --with-deps
+          sudo apt-get install -y xvfb libgtk-3-0 libnotify-dev libnss3 libxss1 libasound2 libxtst6
+
+      - name: Bootstrap smoke test (Electron renderer must not be stuck on Loading...)
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x720x24" npx playwright test -c e2e/playwright.config.ts e2e/main.spec.ts
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
