@@ -70,19 +70,6 @@
           <mat-icon class="card-icon">home</mat-icon>
           Home
         </a>
-        @if (isComponentEnabled('transforms')) {
-          <a
-            mat-list-item
-            class="sidebar-link"
-            routerLink="/transforms"
-            routerLinkActive="active-link"
-            [class.disabled]="!isConnected"
-            (click)="onNavItemClick($event)"
-            >
-            <mat-icon class="card-icon">transform</mat-icon>
-            Transforms
-          </a>
-        }
         @if (isComponentEnabled('theme-picker')) {
           <a
             mat-list-item

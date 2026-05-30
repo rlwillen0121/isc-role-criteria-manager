@@ -12,5 +12,3 @@ export * from './lib/theme-picker/theme-picker.component';
 // Services
 export * from './lib/services';
 export { WEB_API_URL } from './lib/services/web-api.service';
-export * from './lib/transforms/transform-builder/transform-builder.component';
-export * from './lib/transforms/transforms.component';

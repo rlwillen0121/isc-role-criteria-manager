@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { ThemePickerComponent, TransformBuilderComponent, TransformsComponent } from 'sailpoint-components';
+import { ThemePickerComponent } from 'sailpoint-components';
 import { HomeComponent } from './home/home.component';
 import { PageNotFoundComponent } from './shared/components';
 
@@ -16,14 +16,6 @@ export const appRoutes: Routes = [
   {
     path: 'theme-picker',
     component: ThemePickerComponent
-  },
-  {
-    path: 'transforms',
-    component: TransformsComponent
-  },
-  {
-    path: 'transform-builder',
-    component: TransformBuilderComponent
   },
   {
     path: 'component-selector',

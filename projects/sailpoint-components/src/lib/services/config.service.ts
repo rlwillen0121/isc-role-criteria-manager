@@ -56,14 +56,6 @@ export class ConfigService {
       enabled: true,
     },
     {
-      name: 'transforms',
-      displayName: 'Transforms',
-      route: '/transforms',
-      icon: 'transform',
-      description: 'Manage data transformations for SailPoint.',
-      enabled: true,
-    },
-    {
       name: 'theme-picker',
       displayName: 'Theme Picker',
       route: '/theme-picker',
