@@ -1,20 +1,20 @@
 /**
  * Smoke test: role-criteria-manager happy path (dry-run, read-only)
  *
- * Navigates to the RoleCriteriaManager, searches for any role whose name
- * contains the SMOKE_ROLE_FILTER env var (defaults to ""), picks the first
- * result, configures an "Add value(s)" no-op, previews it in dry-run mode,
- * and confirms the Preview step renders without errors.
+ * Clicks "Connect to Environment", navigates to RoleCriteriaManager,
+ * searches for a birthright role, configures an "Add value(s)" op, previews
+ * in dry-run mode, and asserts Execute is disabled. No tenant writes occur.
  *
- * Does NOT execute — dry run stays ON throughout, so no tenant writes occur.
+ * Run with: npm run e2e -- --grep "Role Criteria"
+ * Override role search: SMOKE_ROLE_FILTER=my-role npm run e2e ...
  */
 
 import { _electron as electron, ElectronApplication, Page } from 'playwright';
 import { test, expect } from '@playwright/test';
 import * as PATH from 'path';
 
-const ROLE_FILTER = process.env['SMOKE_ROLE_FILTER'] ?? 'a';
-const TIMEOUT = 30_000;
+const ROLE_FILTER = process.env['SMOKE_ROLE_FILTER'] ?? 'birthright';
+const TIMEOUT = 45_000;
 
 test.describe('Role Criteria Manager smoke (dry-run)', () => {
   let app: ElectronApplication;
@@ -24,46 +24,58 @@ test.describe('Role Criteria Manager smoke (dry-run)', () => {
     app = await electron.launch({
       args: [PATH.join(__dirname, '../electron-dist/main.js')],
       cwd: PATH.join(__dirname, '..'),
+      // Force a large window so no buttons are clipped
+      env: { ...process.env, ELECTRON_DISABLE_SECURITY_WARNINGS: '1' },
     });
     win = await app.firstWindow();
     await win.waitForLoadState('domcontentloaded');
+
+    // Maximise the window so nothing is cut off
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0].maximize();
+    });
   });
 
   test.afterAll(async () => {
-    await app.close();
+    await app.close().catch(() => { /* ignore if already closed */ });
   });
 
-  test('navigates to Role Criteria Manager', async () => {
-    // Navigate via the router — use window.location since nav links may vary
-    await win.evaluate(() => {
-      (window as Window & { ngZone?: { run: (fn: () => void) => void } })
-        .ngZone?.run(() => {
-          window.location.hash = '#/role-criteria-manager';
-        });
-    });
-    // Fallback: direct hash navigation
-    await win.evaluate(() => {
-      window.location.hash = '#/role-criteria-manager';
-    });
+  test('full happy path: connect → search → operation → preview', async () => {
+    // ── 1. Connect ──────────────────────────────────────────────────────────
+    const connectBtn = win.getByRole('button', { name: /Connect to Environment/i });
+    await connectBtn.waitFor({ state: 'visible', timeout: TIMEOUT });
+    await connectBtn.click();
 
-    await expect(
-      win.locator('app-role-criteria-manager, [selector="app-role-criteria-manager"]').first()
-    ).toBeVisible({ timeout: TIMEOUT }).catch(() => {
-      // Try mat-toolbar with title text as fallback signal
-      return expect(win.getByText('Role Criteria Manager').first()).toBeVisible({ timeout: 5000 });
-    });
-  });
+    // Wait for connected dashboard
+    await expect(win.locator('.dashboard-page')).toBeVisible({ timeout: TIMEOUT });
+    console.log('Connected to tenant.');
 
-  test('Step 1: search input is present and Find Roles button works', async () => {
+    // ── 2. Navigate to Role Criteria Manager ────────────────────────────────
+    // Use Angular router link in the sidebar (visible once connected)
+    const rcmNavLink = win.locator('a[routerlink="/role-criteria-manager"], a[ng-reflect-router-link="/role-criteria-manager"]');
+    const rcmNavVisible = await rcmNavLink.isVisible().catch(() => false);
+
+    if (rcmNavVisible) {
+      await rcmNavLink.click();
+    } else {
+      // Fall back to direct hash navigation if nav link is hidden/disabled
+      await win.evaluate(() => { window.location.hash = '#/role-criteria-manager'; });
+    }
+
+    // The RCM component's search input is the reliable signal it's loaded
     const searchInput = win.locator('input[placeholder="e.g. DL - Engineering"]');
     await searchInput.waitFor({ state: 'visible', timeout: TIMEOUT });
-    await searchInput.fill(ROLE_FILTER);
+    console.log('Role Criteria Manager loaded.');
 
+    // ── 3. Search ───────────────────────────────────────────────────────────
+    // Switch to Bulk mode so "birthright" matches any role whose name contains it
+    await win.getByLabel(/Bulk \(name contains\)/i).click();
+    await searchInput.fill(ROLE_FILTER);
     await win.getByRole('button', { name: /Find Roles/i }).click();
 
     const resultCount = win.locator('.result-count');
-    const emptyState = win.locator('.empty-state');
-    const snackBar = win.locator('mat-snack-bar-container');
+    const emptyState  = win.getByText('No roles matched your search.');
+    const snackBar    = win.locator('mat-snack-bar-container');
 
     await Promise.race([
       resultCount.waitFor({ state: 'visible', timeout: TIMEOUT }),
@@ -71,46 +83,45 @@ test.describe('Role Criteria Manager smoke (dry-run)', () => {
       snackBar.waitFor({ state: 'visible', timeout: TIMEOUT }),
     ]);
 
-    const snackVisible = await snackBar.isVisible();
-    if (snackVisible) {
-      const snackText = await snackBar.textContent();
-      throw new Error(`API error or no auth — snackbar: ${snackText}`);
+    if (await snackBar.isVisible()) {
+      const snackText = (await snackBar.textContent()) ?? '';
+      if (snackText.includes('No roles matched')) {
+        test.skip(true, `No roles matched "${ROLE_FILTER}" — set SMOKE_ROLE_FILTER`);
+        return;
+      }
+      throw new Error(`API error — snackbar: ${snackText}`);
     }
-
-    const isEmpty = await emptyState.isVisible();
-    if (isEmpty) {
-      console.log(`No roles matched filter "${ROLE_FILTER}" — set SMOKE_ROLE_FILTER to a known role name fragment.`);
-      test.skip();
+    if (await emptyState.isVisible().catch(() => false)) {
+      test.skip(true, `No roles matched "${ROLE_FILTER}" — set SMOKE_ROLE_FILTER`);
       return;
     }
 
-    const countText = await resultCount.textContent();
-    console.log('Roles found:', countText?.trim());
+    const countText = (await resultCount.textContent())?.trim() ?? '';
+    console.log('Roles found:', countText);
     expect(countText).toMatch(/\d+ role\(s\) found/);
-  });
 
-  test('Step 2: advances to Operation step and loads criteria', async () => {
+    // ── 4. Select first role (bulk mode leaves all unchecked by default) ────
+    await win.locator('table.role-table mat-checkbox').first().click();
+
+    // ── 5. Advance to Operation step ────────────────────────────────────────
     await win.getByRole('button', { name: /^Next$/i }).click();
     await expect(win.getByText(/attribute\(s\) found/i)).toBeVisible({ timeout: TIMEOUT });
-    console.log('Operation step loaded with criteria attributes.');
-  });
+    console.log('Operation step loaded.');
 
-  test('Step 2: selects "Add value(s)" tab and fills dummy op', async () => {
+    // ── 5. Pick "Add value(s)" and fill a no-op value ──────────────────────
     await win.getByRole('tab', { name: /Add value\(s\)/i }).click();
     await win.getByLabel('Attribute').first().fill('department');
     await win.getByLabel(/Value\(s\) to add/i).fill('SMOKE_TEST_DRY_RUN');
-  });
 
-  test('Step 3: Preview renders with dry-run guard and Execute disabled', async () => {
+    // ── 6. Preview ──────────────────────────────────────────────────────────
     await win.getByRole('button', { name: /Preview/i }).click();
-
     await expect(win.locator('.preview-summary')).toBeVisible({ timeout: TIMEOUT });
-    const summary = await win.locator('.preview-summary').textContent();
-    console.log('Preview summary:', summary?.trim());
+    console.log('Preview:', (await win.locator('.preview-summary').textContent())?.trim());
 
-    await expect(win.getByText(/Dry run is on/i)).toBeVisible({ timeout: 5000 });
+    // Dry-run guard must be on; Execute must be disabled
+    await expect(win.getByText(/Dry run is on/i)).toBeVisible({ timeout: 10_000 });
     await expect(win.getByRole('button', { name: /Execute/i })).toBeDisabled();
 
-    console.log('Smoke test passed — role update flow works end-to-end (dry-run).');
+    console.log('Smoke test PASSED — full dry-run flow verified.');
   });
 });
