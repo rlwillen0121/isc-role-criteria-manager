@@ -27,6 +27,11 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
+      - name: Run unit tests
+        run: npm test
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Angular build check
         run: npx ng build --configuration production
         env:

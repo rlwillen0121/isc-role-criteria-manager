@@ -3,7 +3,7 @@ const esModules = [].join('|');
 
 module.exports = {
   rootDir: '.',
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/src', '<rootDir>/projects/sailpoint-components/src'],
   testMatch: ['**/*.spec.ts'],
   setupFiles: ['<rootDir>/src/polyfills-test.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/zone-testing-setup.ts'],

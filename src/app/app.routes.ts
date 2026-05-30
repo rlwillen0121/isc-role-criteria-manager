@@ -18,6 +18,10 @@ export const appRoutes: Routes = [
     component: ThemePickerComponent
   },
   {
+    path: 'role-criteria-manager',
+    loadComponent: () => import('sailpoint-components').then(m => m.RoleCriteriaManagerComponent)
+  },
+  {
     path: 'component-selector',
     loadComponent: () => import('./component-selector/component-selector.component').then(m => m.ComponentSelectorComponent)
   },
