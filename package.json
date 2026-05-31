@@ -1,11 +1,11 @@
 {
-  "name": "sailpoint-ui-development-kit",
+  "name": "isc-role-criteria-manager",
   "version": "1.3.1",
-  "description": "SailPoint UI development kit",
-  "homepage": "https://sailpoint.com",
+  "description": "Community tool for bulk-managing SailPoint ISC role membership criteria",
+  "homepage": "https://github.com/rlwillen0121/isc-role-criteria-manager",
   "author": {
-    "name": "Philip Ellis",
-    "email": "developer-relations@sailpoint.com"
+    "name": "Ryan Willen",
+    "email": "ryan.willen@gmail.com"
   },
   "keywords": [
     "angular",
@@ -22,6 +22,7 @@
     "mac",
     "linux"
   ],
+  "license": "MIT",
   "main": "electron-dist/main.js",
   "private": true,
   "workspaces": [
@@ -161,7 +162,7 @@
     "wait-on": "8.0.3"
   },
   "engines": {
-    "node": ">= 16.14.0 || >= 18.10.0"
+    "node": ">=20.0.0"
   },
   "browserslist": [
     "chrome 114"

@@ -73,6 +73,23 @@ Before writing anything, the app shows a side-by-side before/after criteria tree
 - Shows per-role status (Updated / Skipped / Error) with ISC error detail on failure
 - **Restore from Snapshot** — reload a previous snapshot and revert any subset of roles to their prior state
 
+### Authentication & trust model
+
+**PAT (Personal Access Token)** authentication is fully local. The client ID and secret are stored in the OS keychain via Electron's `safeStorage` API and are never sent anywhere except directly to your ISC tenant's token endpoint.
+
+**OAuth** authentication uses a SailPoint-operated AWS Lambda broker (`https://nug87yusrg.execute-api.us-east-1.amazonaws.com/Prod/sailapps`). The flow works as follows:
+
+1. The app generates an ephemeral RSA key pair in memory and sends your tenant name and the ephemeral public key to the broker.
+2. The broker initiates the OAuth authorization code + PKCE flow with your ISC tenant and returns a browser URL. Your browser opens and you log in directly with SailPoint.
+3. The broker receives the authorization code from SailPoint, exchanges it for tokens, encrypts the token payload using the ephemeral public key you provided, and holds it for pickup.
+4. The app polls the broker for the encrypted token, decrypts it locally using the in-memory private key (which is cleared immediately after use), and stores the resulting tokens in the OS keychain via `safeStorage`.
+
+Subsequent API calls go directly from the Electron app to your ISC tenant. Token refresh also goes through the broker (`/auth/refresh`): the app sends the refresh token + tenant URL and receives a new access/refresh token pair.
+
+**What the broker sees:** your tenant name, your ISC API base URL, and the OAuth tokens during the brief exchange window. It does not see your PAT credentials.
+
+If you prefer zero third-party involvement, use PAT auth instead.
+
 ### Screenshots & walkthroughs
 
 > Full step-by-step walkthrough with all screenshots: **[docs/USAGE.md](docs/USAGE.md)**
