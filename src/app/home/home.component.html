@@ -77,14 +77,6 @@
                         placeholder="https://your-tenant.api.identitynow.com" required>
                       </mat-form-field>
                     </div>
-                    <div class="form-row">
-                      <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>NERM Base URL</mat-label>
-                        <input matInput [(ngModel)]="state.actualTenant.nermBaseUrl" name="nermBaseUrl"
-                          placeholder="https://your-tenant.nonemployee.com/api">
-                        <mat-hint>Non-Employee Risk Management API endpoint</mat-hint>
-                      </mat-form-field>
-                    </div>
                     <!-- Authentication Type Toggle -->
                     <div class="form-row">
                       <mat-form-field appearance="outline" class="full-width">
@@ -101,45 +93,6 @@
                         </mat-select>
                         <mat-hint>Choose how to authenticate with this environment</mat-hint>
                       </mat-form-field>
-                    </div>
-                    <!-- CA Certificate Path -->
-                    <div class="form-row">
-                      <div class="ca-cert-input-group">
-                        <mat-form-field appearance="outline" class="ca-cert-input">
-                          <mat-label>Custom CA Certificate Path (Optional)</mat-label>
-                          <input matInput [(ngModel)]="state.actualTenant.caCertPath"
-                            name="caCertPath" placeholder="/path/to/cert.pem"
-                            (input)="onCaCertPathChange()">
-                          <mat-hint>Path to CA certificate file</mat-hint>
-                        </mat-form-field>
-                        @if (!state.isWebMode) {
-                          <button mat-stroked-button type="button" (click)="browseCaCertFile()"
-                            class="browse-button"
-                            matTooltip="Browse for certificate file">
-                            <mat-icon>folder_open</mat-icon>
-                            Browse
-                          </button>
-                        }
-                      </div>
-                    </div>
-                    @if (state.actualTenant.caCertPath) {
-                      <div class="ca-cert-hint">
-                        <mat-icon class="info-icon" color="primary">info</mat-icon>
-                        <span>Using custom CA certificate allows for TLS connection even behind corporate proxy networks that inspect traffic</span>
-                      </div>
-                    }
-                    <!-- TLS Bypass Option -->
-                    <div class="form-row">
-                      <mat-checkbox [(ngModel)]="state.actualTenant.bypassTLS" name="bypassTLS" color="warn"
-                        (change)="onTlsBypassChange()">
-                        Bypass TLS Certificate Validation
-                      </mat-checkbox>
-                      @if (state.actualTenant.bypassTLS) {
-                        <div class="tls-bypass-hint">
-                          <mat-icon class="warning-icon" color="warn">warning</mat-icon>
-                          <span>This will disable SSL certificate validation for this environment. Only use for debugging or test purposes. DO NOT USE FOR PRODUCTION.</span>
-                        </div>
-                      }
                     </div>
                     <!-- PAT Fields -->
                     @if (state.actualTenant.authtype === 'pat') {

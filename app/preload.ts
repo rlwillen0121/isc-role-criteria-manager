@@ -28,7 +28,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeConfig: (config: any) => ipcMain.invoke('write-config', config),
   
   // file browser
-  browseForFile: () => ipcMain.invoke('browse-for-file'),
   browseForJsonFile: () => ipcMain.invoke('browse-for-json-file'),
   saveFile: (options: { defaultPath?: string; content: string }) =>
     ipcMain.invoke('save-file', options),
