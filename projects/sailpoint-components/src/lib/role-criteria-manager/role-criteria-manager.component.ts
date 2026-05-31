@@ -769,17 +769,14 @@ export class RoleCriteriaManagerComponent {
 
   /**
    * Converts a CriteriaNode tree into an Elasticsearch query string suitable
-   * for the ISC Search API. Leaf nodes become `attribute:"value"` terms;
-   * composite nodes join children with AND/OR.
+   * for the ISC Search API. Leaf nodes are mapped by {@link leafSearchTerm};
+   * composite nodes join their non-empty children with AND/OR and parenthesize
+   * when there is more than one.
    */
   private criteriaTreeToSearchQuery(node: CriteriaNode | null): string {
     if (!node) return '';
     if (isLeaf(node)) {
-      const prop = node.key?.property ?? '';
-      const vals = leafValues(node);
-      if (!prop || vals.length === 0) return '';
-      const terms = vals.map(v => `${prop}:"${v}"`).join(' OR ');
-      return vals.length > 1 ? `(${terms})` : terms;
+      return this.leafSearchTerm(node);
     }
     const children = (node.children ?? [])
       .map(c => this.criteriaTreeToSearchQuery(c))
@@ -787,6 +784,48 @@ export class RoleCriteriaManagerComponent {
     if (children.length === 0) return '';
     const op = node.operation === 'AND' ? ' AND ' : ' OR ';
     return children.length > 1 ? `(${children.join(op)})` : children[0];
+  }
+
+  /**
+   * Maps a leaf criterion to an ISC Search field + operation-aware term.
+   *
+   * IDENTITY-type attributes live under `attributes.<property>` in the search
+   * index (only a few core fields are top-level), so that prefix is what
+   * actually matches — a bare `property:"value"` silently returns zero for
+   * custom attributes like `location`/`title`/`workerType`. Operation
+   * semantics are encoded with quoted wildcards, which ISC (Elasticsearch
+   * query_string with analyze_wildcard) evaluates correctly even for
+   * multi-word values and values containing special characters such as `@`:
+   *   EQUALS       field:"v"        NOT_EQUALS   NOT field:"v"
+   *   CONTAINS     field:"*v*"      STARTS_WITH  field:"v*"
+   *   ENDS_WITH    field:"*v"
+   */
+  private leafSearchTerm(node: CriteriaNode): string {
+    const prop = node.key?.property ?? '';
+    const vals = leafValues(node);
+    if (!prop || vals.length === 0) return '';
+    // IDENTITY criteria may store the property with or without the optional
+    // `attribute.` prefix; the search index keys them under `attributes.<name>`,
+    // so normalize the prefix off before prepending the search path.
+    const field =
+      (node.key?.type ?? 'IDENTITY') === 'IDENTITY'
+        ? `attributes.${normalizeIdentityAttr(prop)}`
+        : prop;
+    const esc = (v: string) => v.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const terms = vals.map(v => {
+      const e = esc(v);
+      switch (node.operation) {
+        case 'NOT_EQUALS': return `NOT ${field}:"${e}"`;
+        case 'CONTAINS': return `${field}:"*${e}*"`;
+        case 'STARTS_WITH': return `${field}:"${e}*"`;
+        case 'ENDS_WITH': return `${field}:"*${e}"`;
+        default: return `${field}:"${e}"`; // EQUALS and any unknown op
+      }
+    });
+    // NOT_EQUALS over multiple values is a conjunction (exclude all of them);
+    // every other operation ORs its alternatives.
+    const join = node.operation === 'NOT_EQUALS' ? ' AND ' : ' OR ';
+    return terms.length > 1 ? `(${terms.join(join)})` : terms[0];
   }
 
   identityCount(roleId: string): { before: number | null; after: number | null; loading: boolean } | null {

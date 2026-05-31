@@ -139,6 +139,11 @@ $patchHeaders = @{
     'Content-Type' = 'application/json-patch+json'
     Accept         = 'application/json'
 }
+$postHeaders  = @{
+    Authorization  = "Bearer $tokenPlain"
+    'Content-Type' = 'application/json'
+    Accept         = 'application/json'
+}
 
 # ============================================================================
 # SECTION 2 — API HELPERS
@@ -150,6 +155,29 @@ function Invoke-ISCGet([string]$Uri) {
 
 function Invoke-ISCPatch([string]$Uri, [string]$Body) {
     Invoke-RestMethod -Uri $Uri -Headers $patchHeaders -Method Patch -Body $Body
+}
+
+# Identity match count via the ISC Search API. Mirrors the Electron app's
+# `searchCount` call: POST /v2025/search/count with an Elasticsearch query
+# string scoped to the `identities` index. The count is returned in the
+# `X-Total-Count` response header (the body is empty), so we use
+# Invoke-WebRequest rather than Invoke-RestMethod to read it. Returns the
+# count as [int], or $null on any error (parity with the app, which renders
+# "n/a" when the count can't be fetched).
+function Get-IdentitySearchCount([string]$Query) {
+    if ([string]::IsNullOrWhiteSpace($Query)) { return $null }
+    try {
+        $body = @{ indices = @('identities'); query = @{ query = $Query } } |
+                ConvertTo-Json -Depth 6 -Compress
+        $resp = Invoke-WebRequest -Uri "$baseUrl/v2025/search/count" -Headers $postHeaders `
+                    -Method POST -Body $body -UseBasicParsing
+        $total = $resp.Headers['X-Total-Count']
+        if ($total -is [array]) { $total = $total[0] }
+        if ([string]::IsNullOrWhiteSpace($total)) { return $null }
+        return [int]$total
+    } catch {
+        return $null
+    }
 }
 
 # ============================================================================
@@ -233,6 +261,113 @@ function Write-CriteriaTree($node, [int]$depth = 0) {
         Write-Host "${pad}$prop" -ForegroundColor Yellow -NoNewline
         Write-Host " $($node.operation) " -ForegroundColor DarkGray -NoNewline
         Write-Host $valStr -ForegroundColor White
+    }
+}
+
+# Escapes a value for inclusion inside an ISC Search quoted term.
+function Get-EscapedSearchValue([string]$v) {
+    return $v.Replace('\', '\\').Replace('"', '\"')
+}
+
+# Maps a leaf criterion to an ISC Search field + operation-aware term.
+# IDENTITY-type attributes live under `attributes.<property>` in the search
+# index (only a handful of core fields are top-level), so that prefix is what
+# actually matches. Operation semantics are encoded with quoted wildcards,
+# which ISC (Elasticsearch query_string with analyze_wildcard) evaluates
+# correctly even for multi-word values:
+#   EQUALS       field:"v"        NOT_EQUALS   NOT field:"v"
+#   CONTAINS     field:"*v*"      STARTS_WITH  field:"v*"
+#   ENDS_WITH    field:"*v"
+#
+# NOTE: This intentionally diverges from the Electron app's
+# `criteriaTreeToSearchQuery`, which emits the raw `property:"value"` and
+# ignores the operation. That under-counts (often to zero) for custom identity
+# attributes because it omits the `attributes.` prefix and the wildcard form —
+# verified against the devrel tenant. The composite AND/OR/parenthesization
+# structure below is identical to the app; only the leaf field/operation
+# mapping is corrected so the impact counts are real.
+function Get-LeafSearchTerm($node) {
+    $prop = if ($node.PSObject.Properties['key'] -and $node.key) { $node.key.property } else { '' }
+    if ([string]::IsNullOrWhiteSpace($prop)) { return '' }
+    $keyType = if ($node.key.PSObject.Properties['type'] -and $node.key.type) { $node.key.type } else { 'IDENTITY' }
+    # IDENTITY criteria may carry the optional 'attribute.' prefix; the search
+    # index keys them under 'attributes.<name>', so strip the prefix first.
+    $field   = if ($keyType -eq 'IDENTITY') { "attributes.$(Get-NormalizedAttr $prop)" } else { $prop }
+    $op      = $node.operation
+    $vals    = Get-LeafValues $node
+    if ($vals.Count -eq 0) { return '' }
+
+    $terms = @()
+    foreach ($v in $vals) {
+        $e = Get-EscapedSearchValue $v
+        switch ($op) {
+            'EQUALS'      { $terms += "${field}:`"$e`"" }
+            'NOT_EQUALS'  { $terms += "NOT ${field}:`"$e`"" }
+            'CONTAINS'    { $terms += "${field}:`"*$e*`"" }
+            'STARTS_WITH' { $terms += "${field}:`"$e*`"" }
+            'ENDS_WITH'   { $terms += "${field}:`"*$e`"" }
+            default       { $terms += "${field}:`"$e`"" }
+        }
+    }
+    # NOT_EQUALS over multiple values is a conjunction (exclude all); every
+    # other operation ORs its alternatives — matching how a multi-value leaf
+    # is evaluated as role membership.
+    $join = if ($op -eq 'NOT_EQUALS') { ' AND ' } else { ' OR ' }
+    $joined = $terms -join $join
+    if ($terms.Count -gt 1) { return "($joined)" }
+    return $joined
+}
+
+# Converts a criteria tree into an ISC Search (Elasticsearch) query string.
+# Leaf nodes are mapped by Get-LeafSearchTerm; composite nodes join their
+# non-empty children with AND/OR and parenthesize when there is more than one
+# — structurally identical to the Electron app's `criteriaTreeToSearchQuery`.
+# Returns '' for a node that contributes no constraint.
+function Get-CriteriaSearchQuery($node) {
+    if ($null -eq $node) { return '' }
+    $isComposite = $node.PSObject.Properties['children'] -and $null -ne $node.children
+    if (-not $isComposite) {
+        return Get-LeafSearchTerm $node
+    }
+    $childQueries = @()
+    foreach ($child in $node.children) {
+        $q = Get-CriteriaSearchQuery $child
+        if (-not [string]::IsNullOrWhiteSpace($q)) { $childQueries += $q }
+    }
+    if ($childQueries.Count -eq 0) { return '' }
+    $op = if ($node.operation -eq 'AND') { ' AND ' } else { ' OR ' }
+    if ($childQueries.Count -gt 1) { return '(' + ($childQueries -join $op) + ')' }
+    return $childQueries[0]
+}
+
+# Identity match count for a criteria tree. Returns 0 for an empty/absent tree,
+# $null when the tree yields no usable query or the Search API call fails.
+# Mirrors the app's `countIdentitiesForCriteria`.
+function Get-CriteriaIdentityCount($node) {
+    if ($null -eq $node) { return 0 }
+    $query = Get-CriteriaSearchQuery $node
+    if ([string]::IsNullOrWhiteSpace($query)) { return $null }
+    return Get-IdentitySearchCount $query
+}
+
+# Render a before/after identity-impact line, mirroring the app's Preview
+# "identity counts". Formats counts and a signed delta; shows "n/a" when a
+# count is unavailable (null).
+function Write-IdentityImpact($beforeCount, $afterCount) {
+    $fmt = { param($n) if ($null -eq $n) { 'n/a' } else { [string]$n } }
+    $beforeStr = & $fmt $beforeCount
+    $afterStr  = & $fmt $afterCount
+    Write-Host '    Identities: ' -ForegroundColor DarkGray -NoNewline
+    Write-Host "$beforeStr" -ForegroundColor White -NoNewline
+    Write-Host ' -> ' -ForegroundColor DarkGray -NoNewline
+    Write-Host "$afterStr" -ForegroundColor White -NoNewline
+    if ($null -ne $beforeCount -and $null -ne $afterCount) {
+        $delta = $afterCount - $beforeCount
+        $sign  = if ($delta -gt 0) { "+$delta" } elseif ($delta -lt 0) { "$delta" } else { '0' }
+        $color = if ($delta -gt 0) { 'Green' } elseif ($delta -lt 0) { 'Yellow' } else { 'DarkGray' }
+        Write-Host "  ($sign)" -ForegroundColor $color
+    } else {
+        Write-Host ''
     }
 }
 
@@ -833,6 +968,12 @@ foreach ($preview in $previews) {
         Write-CriteriaTree $beforeCriteria 3
         Write-Host '    After:' -ForegroundColor DarkGray
         Write-CriteriaTree $result.tree 3
+
+        # Identity impact preview — before/after match counts from the ISC
+        # Search API (parity with the Electron app's Preview step).
+        $beforeCount = Get-CriteriaIdentityCount $beforeCriteria
+        $afterCount  = Get-CriteriaIdentityCount $result.tree
+        Write-IdentityImpact $beforeCount $afterCount
     }
 }
 
