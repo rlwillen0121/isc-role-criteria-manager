@@ -73,6 +73,22 @@ Before writing anything, the app shows a side-by-side before/after criteria tree
 - Shows per-role status (Updated / Skipped / Error) with ISC error detail on failure
 - **Restore from Snapshot** — reload a previous snapshot and revert any subset of roles to their prior state
 
+### Screenshots & walkthroughs
+
+> Full step-by-step walkthrough with all screenshots: **[docs/USAGE.md](docs/USAGE.md)**
+
+**Target — four modes for finding roles**
+
+![Target modes](docs/media/target-modes.gif)
+
+**Operations — five criteria-editing actions**
+
+![Operations](docs/media/operations.gif)
+
+**Preview → Apply → Restore**
+
+![Apply and Restore](docs/media/apply-restore.gif)
+
 ---
 
 ## PowerShell scripts
