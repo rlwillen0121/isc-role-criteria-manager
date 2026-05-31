@@ -43,7 +43,6 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: false,
     webPreferences: {
       nodeIntegration: false,
-      sandbox: true,
       preload: path.join(__dirname, 'preload.js'),
       allowRunningInsecureContent: false,
       contextIsolation: true,
@@ -123,7 +122,7 @@ try {
         responseHeaders: {
           ...details.responseHeaders,
           'Content-Security-Policy': [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'"
+            "default-src 'self'; script-src 'self' 'sha256-f8OOSwvCiwgVGvwZ0ysTVCygKdip+6P2zgqnAzLv4N4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'"
           ]
         }
       });
