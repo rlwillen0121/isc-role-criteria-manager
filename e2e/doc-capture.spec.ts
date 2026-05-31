@@ -2,7 +2,7 @@
  * doc-capture.spec.ts
  *
  * Playwright-driven screenshot capture for isc-role-criteria-manager.
- * Runs headed against the devrel ISC sandbox and saves production-quality
+ * Runs headed against a sandbox ISC tenant and saves production-quality
  * screenshots to docs/media/ for README / docs/USAGE.md integration.
  *
  * Load credentials before running:
@@ -79,7 +79,7 @@ test('doc-capture: all major flows', async () => {
       await win.evaluate(
         async ({ tenantUrl, baseUrl, clientId, clientSecret }) => {
           await (window as any).electronAPI.updateEnvironment({
-            environmentName: 'devrel',
+            environmentName: 'Sandbox',
             tenantUrl,
             baseUrl,
             authtype: 'pat',

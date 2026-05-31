@@ -1,6 +1,6 @@
 # isc-role-criteria-manager — Electron App Walkthrough
 
-> Screenshots and walkthroughs captured against the devrel ISC sandbox.
+> Screenshots and walkthroughs captured against a sandbox ISC tenant.
 > All Apply operations shown here used the dry-run safety rail or were
 > immediately restored from a pre-run snapshot.
 
