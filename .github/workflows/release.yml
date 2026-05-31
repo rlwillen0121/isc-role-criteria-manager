@@ -52,15 +52,18 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=8192'
           # No code-signing env vars set → unsigned build
 
-      - name: Generate SHA256SUMS
+      - name: Generate checksum
         shell: bash
-        run: sha256sum release/${{ matrix.artifact }} > release/SHA256SUMS
+        run: |
+          cd release
+          f=$(ls ${{ matrix.artifact }} | head -1)
+          if command -v sha256sum >/dev/null 2>&1; then sha256sum "$f" > "$f.sha256"; else shasum -a 256 "$f" > "$f.sha256"; fi
 
       - name: Upload release asset
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
             release/${{ matrix.artifact }}
-            release/SHA256SUMS
+            release/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
