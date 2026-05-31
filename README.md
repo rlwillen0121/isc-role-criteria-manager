@@ -62,9 +62,17 @@ npm start           # launches Electron in dev mode
 | **Remove** | Remove a specific value or delete all leaves for an attribute |
 | **Consolidate** | Merge sibling OR leaves for the same attribute into a single multi-value leaf |
 
+#### Simulate
+
+Click **Simulate** in the Operation step to dry-run the operation against every **selected** role (the button shows the exact count: *Simulate (N roles)*). Results show how many roles would change and how many would be skipped with skip reasons — no API writes.
+
 #### Preview
 
-Before writing anything, the app shows a side-by-side before/after criteria tree for every selected role, plus live identity counts (before and after) fetched from the ISC Search API.
+Before writing anything, the app shows a side-by-side before/after criteria tree for every selected role, plus live identity counts (before and after) fetched from the ISC Search API. Counts use the corrected `attributes.<name>` prefix and operation-aware Elasticsearch terms, so they reflect real identity matches even for custom attributes.
+
+#### Attribute names — `attribute.` prefix is optional
+
+Everywhere you type an IDENTITY attribute name (Operation forms, Find by criteria filter), the `attribute.` prefix is accepted but not required. `cloudLifecycleState` and `attribute.cloudLifecycleState` are treated as the same attribute throughout.
 
 #### Apply
 
@@ -72,6 +80,7 @@ Before writing anything, the app shows a side-by-side before/after criteria tree
 - Applies RFC-6902 JSON Patch operations via `PATCH /v3/roles/{id}`
 - Shows per-role status (Updated / Skipped / Error) with ISC error detail on failure
 - **Restore from Snapshot** — reload a previous snapshot and revert any subset of roles to their prior state
+- **Start Over** — full reset of all four steps (Target, Operation, Preview, Results); distinct from **Run again**, which keeps your target selection and jumps back to the Operation step
 
 ### Authentication & trust model
 
@@ -106,6 +115,10 @@ If you prefer zero third-party involvement, use PAT auth instead.
 
 ![Apply and Restore](docs/media/apply-restore.gif)
 
+**PowerShell walkthrough — Target → Operation → Preview → `WhatIf`**
+
+![PowerShell walkthrough](docs/media/ps-walkthrough.gif)
+
 ---
 
 ## PowerShell scripts
@@ -125,7 +138,9 @@ $env:ISC_BEARER_TOKEN = "<your-token>"
 # — or — leave unset and paste interactively when prompted
 ```
 
-Both scripts validate the JWT org claim against the tenant URL on startup to catch copy-paste token errors.
+**Tenant URL** — either form is accepted. If you supply the base URL (`https://acme.identitynow.com`) the script automatically inserts the `.api.` segment (`https://acme.api.identitynow.com`). Both scripts validate the JWT org claim against the tenant URL on startup to catch copy-paste token errors.
+
+**Compatibility** — requires PowerShell 4.0 or later. TLS 1.2 is enabled automatically, so no manual `[Net.ServicePointManager]` configuration is needed.
 
 ### `Invoke-ISCRoleCriteriaManager.ps1` — full-featured companion
 
@@ -151,7 +166,9 @@ Full feature parity with the Electron app. Four-step interactive workflow: Targe
 | `C` | Consolidate sibling OR leaves for the same attribute (same comparison operator only) |
 | `X` | Restore roles from a saved snapshot file |
 
-**Preview step:** Computes and displays before/after criteria trees for every matched role before prompting to apply, plus an **identity-impact preview** — before/after identity match counts fetched live from the ISC Search API (`POST /v2025/search/count`), with a signed delta, so you can see how many identities each change adds or removes before writing.
+Attribute names accept the `attribute.` prefix or bare names interchangeably — `cloudLifecycleState` and `attribute.cloudLifecycleState` both work everywhere.
+
+**Preview step:** Computes and displays before/after criteria trees for every matched role before prompting to apply, plus an **identity-impact preview** — before/after identity match counts fetched live from the ISC Search API (`POST /v2025/search/count`), with a signed delta, so you can see how many identities each change adds or removes before writing. Counts use `attributes.<name>` prefix and operation-aware terms for accurate results on custom attributes.
 
 **Snapshot:** Automatically saves a pre-run snapshot before writing; `X` operation restores from any saved snapshot.
 
