@@ -1,8 +1,11 @@
 name: Release
 
-# STUB — not yet wired. Runs on version tags; builds unsigned installers via
-# electron-builder and attaches them to the GitHub Release.
-# TODO: wire GITHUB_TOKEN permissions and electron-builder config before enabling.
+# Triggered by a version tag push (e.g. git tag v1.3.1 && git push --tags).
+# Builds unsigned installers on three platforms and attaches them to the
+# GitHub Release created by the tag push.
+#
+# UNSIGNED BINARIES — see RELEASES.md for user-facing Gatekeeper / SmartScreen
+# bypass instructions before posting download links publicly.
 
 on:
   push:
@@ -25,7 +28,6 @@ jobs:
           - os: macos-14
             artifact: '*.dmg'
     runs-on: ${{ matrix.os }}
-    if: false  # remove this line to enable
     steps:
       - uses: actions/checkout@v4
 
@@ -48,5 +50,11 @@ jobs:
         run: npm run build:publish
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No code-signing env vars set → unsigned build
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/${{ matrix.artifact }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
