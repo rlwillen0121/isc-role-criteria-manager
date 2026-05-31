@@ -55,8 +55,15 @@ function createWindow(): BrowserWindow {
   });
 
   win.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url); // Open URL in user's browser
-    return { action: 'deny' }; // Prevent the app from opening the URL
+    try {
+      const parsed = new URL(details.url);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        shell.openExternal(details.url);
+      }
+    } catch {
+      // invalid URL — deny silently
+    }
+    return { action: 'deny' };
   });
 
   win.webContents.on('will-navigate', (event, navigationUrl) => {
@@ -147,7 +154,7 @@ try {
   app.on('activate', () => {
     // On OS X it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (win === null) {
+    if (!win) {
       createWindow();
     }
   });

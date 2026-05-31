@@ -739,7 +739,7 @@ export async function checkOauthCodeFlowComplete (uuid: string, environment: str
             };
 
             storeOAuthTokens(environment, tokenSet);
-            connectToISCWithToken(baseurl, tokenSet.accessToken);
+            await connectToISCWithToken(baseurl, tokenSet.accessToken);
             return { isComplete: true, success: true };
         } else if (tokenResponse.status === 404 || tokenResponse.status === 400) {
             // Token not ready yet, continue polling (backend returns 400 when token not found)
