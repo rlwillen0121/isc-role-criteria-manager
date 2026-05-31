@@ -257,8 +257,11 @@ export const setActiveEnvironment = (
       };
     }
 
-    // Set as active environment
+    // Set as active environment — keep both fields in sync so the CLI
+    // field (activeenvironment) and the UI field (activeuienvironment)
+    // never diverge when the user switches via the UI.
     config.activeuienvironment = environmentName;
+    config.activeenvironment = environmentName;
 
     // Write updated config file
     setConfig(config);
