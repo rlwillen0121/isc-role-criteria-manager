@@ -85,7 +85,7 @@ $baseUrl = $TenantUrl.TrimEnd('/')
 if (-not [string]::IsNullOrWhiteSpace($ClientId) -and -not [string]::IsNullOrWhiteSpace($ClientSecret)) {
     Write-Host 'Acquiring token via OAuth2 client credentials...' -ForegroundColor Cyan
     try {
-        $body     = "grant_type=client_credentials&client_id=$ClientId&client_secret=$ClientSecret"
+        $body     = "grant_type=client_credentials&client_id=$([uri]::EscapeDataString($ClientId))&client_secret=$([uri]::EscapeDataString($ClientSecret))"
         $tokenResp = Invoke-RestMethod -Uri "$baseUrl/oauth/token" -Method POST `
                          -ContentType 'application/x-www-form-urlencoded' -Body $body
         $tokenPlain = $tokenResp.access_token

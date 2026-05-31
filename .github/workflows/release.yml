@@ -29,16 +29,16 @@ jobs:
             artifact: '*.dmg'
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install platform deps (Linux)
         if: runner.os == 'Linux'
@@ -52,9 +52,15 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=8192'
           # No code-signing env vars set → unsigned build
 
+      - name: Generate SHA256SUMS
+        shell: bash
+        run: sha256sum release/${{ matrix.artifact }} > release/SHA256SUMS
+
       - name: Upload release asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          files: release/${{ matrix.artifact }}
+          files: |
+            release/${{ matrix.artifact }}
+            release/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
