@@ -217,13 +217,20 @@ export function roleMatchesCriteriaFilter(
 ): boolean {
   const root = membership?.criteria ?? null;
   if (!root) return false;
-  const attrLower = filter.attribute.toLowerCase();
   const valLower = (filter.value ?? '').toLowerCase();
 
   const walk = (node: CriteriaNode): boolean => {
     if (isLeaf(node)) {
       const prop = node.key?.property ?? '';
-      if (!prop.toLowerCase().includes(attrLower)) return false;
+      // For IDENTITY keys, normalize both stored prop and filter attribute by
+      // stripping the leading 'attribute.' so bare and prefixed forms match.
+      const isIdentity = node.key?.type === 'IDENTITY';
+      const storedNorm = isIdentity ? normalizeIdentityAttr(prop) : prop;
+      const filterNorm = isIdentity
+        ? normalizeIdentityAttr(filter.attribute)
+        : filter.attribute;
+      if (!storedNorm.toLowerCase().includes(filterNorm.toLowerCase()))
+        return false;
       if (filter.operation && node.operation !== filter.operation) return false;
       if (valLower) {
         const vals = leafValues(node).map((v) => v.toLowerCase());
@@ -237,6 +244,22 @@ export function roleMatchesCriteriaFilter(
   return walk(root);
 }
 
+/**
+ * Strips the leading `attribute.` prefix (case-insensitive) from an IDENTITY
+ * key property name.  Use for display and for prefix-agnostic matching.
+ */
+export function normalizeIdentityAttr(prop: string): string {
+  return prop.replace(/^attribute\./i, '');
+}
+
+/**
+ * Ensures an IDENTITY key property is stored with the `attribute.` prefix.
+ * Idempotent — a property that already starts with `attribute.` is unchanged.
+ */
+export function canonicalizeIdentityAttr(prop: string): string {
+  return /^attribute\./i.test(prop) ? prop : `attribute.${prop}`;
+}
+
 /** Build a new leaf node from an attribute, operation and value list. */
 export function buildLeafNode(
   property: string,
@@ -245,7 +268,9 @@ export function buildLeafNode(
   keyType = 'IDENTITY',
   sourceId?: string | null
 ): CriteriaNode {
-  const key: CriteriaKey = { type: keyType, property };
+  const canonical =
+    keyType === 'IDENTITY' ? canonicalizeIdentityAttr(property) : property;
+  const key: CriteriaKey = { type: keyType, property: canonical };
   if (sourceId) key.sourceId = sourceId;
   const node: CriteriaNode = { operation, key };
   return applyValueInvariant(node, values);

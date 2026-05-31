@@ -10,7 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTree, MatTreeModule } from '@angular/material/tree';
-import { CriteriaNode, leafValues } from '../models/criteria.model';
+import { CriteriaNode, leafValues, normalizeIdentityAttr } from '../models/criteria.model';
 
 /**
  * Presentational `MatTree` rendering of a single criteria {@link CriteriaNode}.
@@ -70,6 +70,19 @@ export class CriteriaTreeComponent implements OnChanges, AfterViewInit {
     const parts = [`type: ${node.key.type}`, `property: ${node.key.property}`];
     if (node.key.sourceId) parts.push(`sourceId: ${node.key.sourceId}`);
     return parts.join(' · ');
+  }
+
+  /**
+   * Display name for a leaf's key property.  Strips the `attribute.` prefix
+   * from IDENTITY keys so all attributes render uniformly (e.g. the stored
+   * `attribute.cloudLifecycleState` shows as `cloudLifecycleState`).
+   * ACCOUNT and ENTITLEMENT key properties are shown verbatim.
+   */
+  displayProperty(node: CriteriaNode): string {
+    if (!node.key) return '(no attribute)';
+    return node.key.type === 'IDENTITY'
+      ? normalizeIdentityAttr(node.key.property)
+      : node.key.property;
   }
 
   /** Comma-joined leaf values for display (∅ when the leaf has no value). */

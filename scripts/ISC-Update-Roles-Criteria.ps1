@@ -298,6 +298,20 @@ switch ($mode) {
 # FUNCTIONS
 # =============================================================================
 
+# Strips a leading 'attribute.' prefix (case-insensitive) from an IDENTITY
+# key property for display and prefix-agnostic comparison.
+function Get-NormalizedAttr([string]$attr) {
+    return $attr -ireplace '^attribute\.', ''
+}
+
+# Returns $true when $stored and $queried refer to the same IDENTITY attribute,
+# treating 'cloudLifecycleState' and 'attribute.cloudLifecycleState' as equal.
+# For non-IDENTITY keys ($isIdentity=$false), performs a plain -eq comparison.
+function Compare-IdentityAttr([string]$stored, [string]$queried, [bool]$isIdentity = $true) {
+    if (-not $isIdentity) { return $stored -eq $queried }
+    return (Get-NormalizedAttr $stored) -eq (Get-NormalizedAttr $queried)
+}
+
 function Update-CriteriaIfOldMatch {
     param (
         [psobject]$node,
@@ -308,7 +322,8 @@ function Update-CriteriaIfOldMatch {
     )
 
     if ($node -is [System.Collections.IDictionary] -or $node -is [psobject]) {
-        if ($node.key -and $node.key.property -eq $attribute) {
+        $isIdentity = $node.key -and $node.key.type -eq 'IDENTITY'
+        if ($node.key -and (Compare-IdentityAttr $node.key.property $attribute $isIdentity)) {
             $match = $false
 
             if ($node.PSObject.Properties["stringValue"] -and $node.stringValue -eq $oldValue) {
@@ -356,7 +371,8 @@ function Add-ValuesToExistingNode {
     )
 
     if ($node -is [psobject]) {
-        if ($node.key -and $node.key.property -eq $attribute) {
+        $isIdentity = $node.key -and $node.key.type -eq 'IDENTITY'
+        if ($node.key -and (Compare-IdentityAttr $node.key.property $attribute $isIdentity)) {
             $matched.Value = $true
 
             $existing = @()
@@ -459,7 +475,8 @@ function Remove-CriteriaByValue {
         [string]$valueToRemove
     )
 
-    if ($node.key -and $node.key.property -eq $attribute) {
+    $isIdentity = $node.key -and $node.key.type -eq 'IDENTITY'
+    if ($node.key -and (Compare-IdentityAttr $node.key.property $attribute $isIdentity)) {
         $match = $false
 
         if ($node.PSObject.Properties["stringValue"] -and $node.stringValue -eq $valueToRemove) {
@@ -522,8 +539,9 @@ function Remove-CriteriaByValue {
 function Get-LeafAttributes {
     param ([psobject]$node)
     if ($node.key) {
-        $val = if ($node.stringValue) { $node.stringValue } else { $node.values -join ", " }
-        Write-Host "    - $($node.key.property)  ($val)" -ForegroundColor Yellow
+        $val      = if ($node.stringValue) { $node.stringValue } else { $node.values -join ", " }
+        $dispProp = if ($node.key.type -eq 'IDENTITY') { Get-NormalizedAttr $node.key.property } else { $node.key.property }
+        Write-Host "    - $dispProp  ($val)" -ForegroundColor Yellow
     }
     if ($node.children) { foreach ($c in $node.children) { Get-LeafAttributes $c } }
 }
@@ -534,7 +552,8 @@ function Remove-CriteriaByAttribute {
         [string]$attribute
     )
 
-    if ($node.key -and $node.key.property -eq $attribute) {
+    $isIdentity = $node.key -and $node.key.type -eq 'IDENTITY'
+    if ($node.key -and (Compare-IdentityAttr $node.key.property $attribute $isIdentity)) {
         Write-Host "  Removing criteria node for attribute '$attribute'"
         return $null
     }
@@ -596,9 +615,15 @@ function Consolidate-SiblingNodes {
         return $node
     }
 
-    # Partition children: matching leaves vs everything else
-    $matchingLeaves    = @($node.children | Where-Object { $_.key -and $_.key.property -eq $attribute })
-    $remainingChildren = @($node.children | Where-Object { -not ($_.key -and $_.key.property -eq $attribute) })
+    # Partition children: matching leaves vs everything else (prefix-agnostic for IDENTITY)
+    $matchingLeaves    = @($node.children | Where-Object {
+        $isId = $_.key -and $_.key.type -eq 'IDENTITY'
+        $_.key -and (Compare-IdentityAttr $_.key.property $attribute $isId)
+    })
+    $remainingChildren = @($node.children | Where-Object {
+        $isId = $_.key -and $_.key.type -eq 'IDENTITY'
+        -not ($_.key -and (Compare-IdentityAttr $_.key.property $attribute $isId))
+    })
 
     if ($matchingLeaves.Count -lt 2) {
         return $node

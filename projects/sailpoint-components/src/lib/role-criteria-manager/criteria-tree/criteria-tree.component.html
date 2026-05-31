@@ -17,7 +17,7 @@
     <!-- Leaf node: a single attribute comparison -->
     <mat-tree-node *matTreeNodeDef="let node" class="criteria-leaf" [matTooltip]="tooltipText(node)">
       <mat-icon class="leaf-icon">label_important</mat-icon>
-      <span class="leaf-prop">{{ node.key?.property || '(no attribute)' }}</span>
+      <span class="leaf-prop">{{ displayProperty(node) }}</span>
       <span class="leaf-op">{{ node.operation }}</span>
       <span class="leaf-values">{{ leafValueText(node) }}</span>
     </mat-tree-node>

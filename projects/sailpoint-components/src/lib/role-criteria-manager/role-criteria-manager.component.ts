@@ -26,6 +26,7 @@ import { SailPointSDKService } from '../sailpoint-sdk.service';
 import { ElectronApiFactoryService } from '../services/electron-api-factory.service';
 import { CriteriaTreeComponent } from './criteria-tree/criteria-tree.component';
 import {
+  canonicalizeIdentityAttr,
   collectLeafAttributes,
   countLeafNodes,
   countNodes,
@@ -35,6 +36,7 @@ import {
   LeafOperation,
   leafValues,
   MembershipSelector,
+  normalizeIdentityAttr,
   parseCriteria,
   roleMatchesCriteriaFilter,
 } from './models/criteria.model';
@@ -563,8 +565,16 @@ export class RoleCriteriaManagerComponent {
 
   private collectValuesForAttribute(node: CriteriaNode | null, attr: string, out: Set<string>): void {
     if (!node) return;
-    if (isLeaf(node) && node.key?.property === attr) {
-      leafValues(node).forEach(v => out.add(v));
+    if (isLeaf(node) && node.key) {
+      const storedNorm = node.key.type === 'IDENTITY'
+        ? normalizeIdentityAttr(node.key.property)
+        : node.key.property;
+      const queryNorm = node.key.type === 'IDENTITY'
+        ? normalizeIdentityAttr(attr)
+        : attr;
+      if (storedNorm === queryNorm) {
+        leafValues(node).forEach(v => out.add(v));
+      }
     }
     node.children?.forEach(c => this.collectValuesForAttribute(c, attr, out));
   }
@@ -664,9 +674,13 @@ export class RoleCriteriaManagerComponent {
         if (keyType !== 'IDENTITY' && !sourceId.trim()) {
           return null;
         }
+        // Canonicalize IDENTITY attributes so bare names (e.g. 'cloudLifecycleState')
+        // are written with the required 'attribute.' prefix.
+        const canonAttr =
+          keyType === 'IDENTITY' ? canonicalizeIdentityAttr(attribute) : attribute;
         return {
           type: 'add-block',
-          params: { attribute, operation, values, join, keyType,
+          params: { attribute: canonAttr, operation, values, join, keyType,
                     ...(keyType !== 'IDENTITY' ? { sourceId: sourceId.trim() } : {}) },
         };
       }
