@@ -1098,6 +1098,60 @@ export class RoleCriteriaManagerComponent {
     }
   }
 
+  startOver(): void {
+    // Target state
+    this.mode = 'single';
+    this.searchText = '';
+    this.criteriaFilter = { attribute: '', operation: '', value: '' };
+    this.accessFilter = { type: 'accessProfile', name: '' };
+    this.roleRows = [];
+    this.searching = false;
+    this.searched = false;
+    this.identityAttributeSuggestions = [];
+    this.identityAttributesLoaded = false;
+    this.accessProfileSuggestions = [];
+    this.entitlementSuggestions = [];
+    this.accessSuggestionsLoaded = false;
+    this.roleCache.clear();
+
+    // Operation state
+    this.selectedTabIndex = 0;
+    this.attributeOptions = [];
+    this.oldValueOptions = [];
+    this.loadingDetails = false;
+    this.updateForm = { attribute: '', oldValue: '', newValues: '' };
+    this.addValuesForm = { attribute: '', addValues: '' };
+    this.addBlockForm = {
+      attribute: '',
+      operation: 'EQUALS' as LeafOperation,
+      values: '',
+      join: 'AND',
+      keyType: 'IDENTITY',
+      sourceId: '',
+    };
+    this.removeForm = { attribute: '', mode: 'value', value: '' };
+    this.consolidateForm = { attribute: '' };
+
+    // Preview state
+    this.previews = [];
+    this.patchJsonExpanded.clear();
+    this.snapshot = true;
+    this.simulationResults = null;
+    this.simulating = false;
+    this.identityCounts.clear();
+
+    // Results state
+    this.results = [];
+    this.hasExecuted = false;
+    this.dryRun = true;
+    this.restoreMode = false;
+    this.snapshotEntries = [];
+
+    if (this.stepper) {
+      this.stepper.selectedIndex = 0;
+    }
+  }
+
   // ===========================================================================
   // Helpers
   // ===========================================================================
