@@ -979,10 +979,11 @@ export class RoleCriteriaManagerComponent {
       this.snackBar.open('Fill in operation parameters first.', 'Close', { duration: 3000 });
       return;
     }
-    if (this.roleRows.length > LARGE_RESULT_THRESHOLD) {
+    const selected = this.selectedRoles();
+    if (selected.length > LARGE_RESULT_THRESHOLD) {
       const proceed = await this.confirm(
         'Large simulation',
-        `Simulating against ${this.roleRows.length} roles requires fetching full details for each. Continue?`,
+        `Simulating against ${selected.length} roles requires fetching full details for each. Continue?`,
         'Continue',
         'Cancel'
       );
@@ -992,7 +993,7 @@ export class RoleCriteriaManagerComponent {
     this.simulationResults = null;
     this.cdr.detectChanges();
     try {
-      for (const row of this.roleRows) {
+      for (const row of selected) {
         if (!this.roleCache.has(row.id)) {
           try {
             const resp = await this.sdk.getRole({ id: row.id });
@@ -1003,7 +1004,7 @@ export class RoleCriteriaManagerComponent {
       let wouldChange = 0;
       let wouldSkip = 0;
       const skipReasons: Record<string, number> = {};
-      for (const row of this.roleRows) {
+      for (const row of selected) {
         const full = this.roleCache.get(row.id);
         const membership: MembershipSelector = {
           type: full?.membership?.type ?? null,
@@ -1019,7 +1020,7 @@ export class RoleCriteriaManagerComponent {
           skipReasons[reason] = (skipReasons[reason] ?? 0) + 1;
         }
       }
-      this.simulationResults = { total: this.roleRows.length, wouldChange, wouldSkip, skipReasons };
+      this.simulationResults = { total: selected.length, wouldChange, wouldSkip, skipReasons };
     } finally {
       this.simulating = false;
       this.cdr.detectChanges();

@@ -186,6 +186,44 @@ describe('RoleCriteriaManagerComponent', () => {
     });
   });
 
+  describe('simulate', () => {
+    function seedRows(ids: string[], selectedIds: Set<string>) {
+      component.roleRows = ids.map((id) => ({
+        id,
+        name: id,
+        membershipType: 'STANDARD',
+        nodeCount: 1,
+        selected: selectedIds.has(id),
+        role: makeRole(id, id, null) as never,
+      }));
+      const cache = (component as never as { roleCache: Map<string, unknown> }).roleCache;
+      for (const id of ids) {
+        cache.set(id, makeRole(id, id, {
+          operation: 'EQUALS',
+          key: { type: 'IDENTITY', property: 'attribute.dept' },
+          stringValue: 'eng',
+        }));
+      }
+    }
+
+    beforeEach(() => {
+      component.selectedTabIndex = 0;
+      component.updateForm = { attribute: 'attribute.dept', oldValue: 'eng', newValues: 'sales' };
+    });
+
+    it('counts only selected roles — 1 of 3 selected yields total 1', async () => {
+      seedRows(['r1', 'r2', 'r3'], new Set(['r2']));
+      await component.simulate();
+      expect(component.simulationResults?.total).toBe(1);
+    });
+
+    it('counts all three when all are selected', async () => {
+      seedRows(['r1', 'r2', 'r3'], new Set(['r1', 'r2', 'r3']));
+      await component.simulate();
+      expect(component.simulationResults?.total).toBe(3);
+    });
+  });
+
   describe('execute', () => {
     beforeEach(() => {
       component.roleRows = [

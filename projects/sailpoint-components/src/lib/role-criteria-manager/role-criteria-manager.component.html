@@ -385,14 +385,14 @@
                   } @else {
                     <mat-icon>science</mat-icon>
                   }
-                  Simulate ({{ roleRows.length }} roles)
+                  Simulate ({{ selectedRoles().length }} roles)
                 </button>
               </div>
               @if (simulationResults) {
                 <mat-card class="simulation-card">
                   <mat-card-header>
                     <mat-card-title>Simulation Results</mat-card-title>
-                    <mat-card-subtitle>Applied against all {{ simulationResults.total }} fetched roles — no writes</mat-card-subtitle>
+                    <mat-card-subtitle>Applied against {{ simulationResults.total }} selected role(s) — no writes</mat-card-subtitle>
                   </mat-card-header>
                   <mat-card-content>
                     <div class="sim-stats">
