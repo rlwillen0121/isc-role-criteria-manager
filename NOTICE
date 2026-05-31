@@ -9,5 +9,14 @@ NOTE: as of the last check, no LICENSE file is actually present in the upstream
 repository (the README references one that is not committed); treat the MIT statement
 as upstream intent pending a committed license.
 
+This repository includes LICENSE.txt, which reproduces the MIT license terms that
+SailPoint publicly declares for the UI Development Kit in its README and developer
+documentation. SailPoint did not commit a LICENSE file to the upstream repository;
+LICENSE.txt here reflects those stated terms as a best-effort record of upstream intent.
+
+LICENSE.txt covers the vendored UI Development Kit foundation only.
+LICENSE covers this project's own code (Copyright (c) 2026 Ryan Willen).
+These are two separate and distinct licenses.
+
 SailPoint and Identity Security Cloud are trademarks of SailPoint Technologies, Inc.;
 this is an unofficial community tool, not affiliated with or endorsed by SailPoint.
