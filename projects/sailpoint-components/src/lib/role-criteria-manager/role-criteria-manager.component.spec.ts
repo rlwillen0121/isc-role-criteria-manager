@@ -307,4 +307,43 @@ describe('RoleCriteriaManagerComponent', () => {
       expect(sdk.patchRole).toHaveBeenCalled();
     });
   });
+
+  describe('startOver', () => {
+    it('resets roleRows, searched flag, and all operation forms to defaults', () => {
+      component.roleRows = [
+        { id: 'r1', name: 'Eng', membershipType: 'STANDARD', nodeCount: 1, selected: true, role: {} as never },
+      ];
+      (component as never as { roleCache: Map<string, unknown> }).roleCache.set('r1', {});
+      component.searched = true;
+      component.searchText = 'Eng';
+      component.selectedTabIndex = 2;
+      component.updateForm = { attribute: 'attribute.dept', oldValue: 'eng', newValues: 'sales' };
+      component.hasExecuted = true;
+      component.results = [{ role: 'Eng', id: 'r1', status: 'Updated' }];
+      component.simulationResults = { total: 1, wouldChange: 1, wouldSkip: 0, skipReasons: {} };
+
+      component.startOver();
+
+      expect(component.roleRows).toHaveLength(0);
+      expect(component.searched).toBe(false);
+      expect(component.searchText).toBe('');
+      expect(component.selectedTabIndex).toBe(0);
+      expect(component.updateForm).toEqual({ attribute: '', oldValue: '', newValues: '' });
+      expect(component.hasExecuted).toBe(false);
+      expect(component.results).toHaveLength(0);
+      expect(component.simulationResults).toBeNull();
+      expect(
+        (component as never as { roleCache: Map<string, unknown> }).roleCache.size
+      ).toBe(0);
+    });
+
+    it('moves the stepper to step 0', () => {
+      const stepper = { selectedIndex: 3 };
+      (component as never as { stepper: unknown }).stepper = stepper;
+
+      component.startOver();
+
+      expect(stepper.selectedIndex).toBe(0);
+    });
+  });
 });
