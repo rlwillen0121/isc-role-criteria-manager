@@ -1,6 +1,10 @@
 # isc-role-criteria-manager
 
-A tool for bulk-managing SailPoint Identity Security Cloud (ISC) role membership criteria.
+> **Unofficial community tool — not affiliated with, sponsored by, or endorsed by SailPoint Technologies, Inc.**
+> SailPoint and Identity Security Cloud (ISC) are trademarks of SailPoint Technologies, Inc., used here
+> solely to describe the product this tool integrates with.
+
+A community tool for bulk-managing SailPoint Identity Security Cloud (ISC) role membership criteria.
 
 Two ways to use it — pick what fits your workflow:
 
@@ -9,6 +13,19 @@ Two ways to use it — pick what fits your workflow:
 | **Requires** | Node 20+, npm | PowerShell 5.1+ |
 | **Auth** | OAuth2 or PAT (via system keychain) | OAuth2 client credentials or bearer token |
 | **Best for** | Interactive bulk editing with visual diff | Automation, CI/CD, headless environments |
+
+---
+
+## Before you run: safety checklist
+
+This tool writes bulk `PATCH` operations to a live ISC tenant. The following built-in rails exist to protect you — **use them**:
+
+| Rail | How to use it |
+|---|---|
+| **Dry-run / preview** | Electron: review the side-by-side diff before clicking Apply. PowerShell: pass `-WhatIf` to either script to print all planned changes with no API writes. |
+| **Test in a sandbox first** | Run against a non-production ISC tenant before touching production roles. |
+| **Automatic pre-run snapshot** | Every Apply (Electron and PowerShell) saves a timestamped JSON snapshot of every matched role's membership *before* writing. |
+| **Restore from Snapshot** | Use the Electron "Restore from Snapshot" action or the PowerShell `X` operation to revert any subset of roles to a prior state from a saved snapshot. |
 
 ---
 
