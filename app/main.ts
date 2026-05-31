@@ -43,6 +43,11 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: false,
     webPreferences: {
       nodeIntegration: false,
+      // sandbox must be false: the preload requires sibling modules via relative require()
+      // (compiled multi-file tsc output). Electron 20+ defaults sandbox:true when
+      // nodeIntegration is false, which prevents relative requires in the preload.
+      // Bundling the preload into a single file would allow sandbox:true here.
+      sandbox: false,
       preload: path.join(__dirname, 'preload.js'),
       allowRunningInsecureContent: false,
       contextIsolation: true,
