@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+#Requires -Version 4.0
 <#
 .SYNOPSIS
     ISC Role Criteria Manager — full-featured PowerShell companion.
@@ -46,6 +46,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# TLS 1.2 — required for SailPoint ISC; default on PS4/Win8.1 is TLS 1.0/1.1
+try {
+    $tls12 = [Net.SecurityProtocolType]::Tls12
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $tls12
+} catch { }
 
 # ============================================================================
 # CONSTANTS
@@ -394,7 +400,7 @@ function Rebuild-Remove($node, [string]$attribute, [string]$mode, [string]$value
     }
     # Composite
     if ($node.PSObject.Properties['children'] -and $node.children) {
-        $kept = [System.Collections.Generic.List[object]]::new()
+        $kept = New-Object 'System.Collections.Generic.List[object]'
         foreach ($child in $node.children) {
             $result = Rebuild-Remove $child $attribute $mode $value $changed
             if ($null -ne $result) { $kept.Add($result) }
@@ -522,7 +528,7 @@ function Invoke-RestoreFromSnapshot($snapshotEntry, $currentMembership) {
 # Page through /v3/roles, accumulating up to LARGE_RESULT_THRESHOLD before
 # prompting for confirmation.  Returns all matching RoleV2025 objects.
 function Get-AllRolesPaged([string]$filterParam = '') {
-    $all    = [System.Collections.Generic.List[object]]::new()
+    $all    = New-Object 'System.Collections.Generic.List[object]'
     $offset = 0
     $warnedLarge = $false
 
@@ -615,13 +621,13 @@ switch ($targetMode) {
         if ($accessType -eq '2') {
             $targetRoles = @($allRoles | Where-Object {
                 $_.PSObject.Properties['entitlements'] -and $_.entitlements |
-                    Where-Object { ($_.name ?? '').ToLower() -like "*$nameLower*" }
+                    Where-Object { ([string]$_.name).ToLower() -like "*$nameLower*" }
             })
             Write-Host "$($targetRoles.Count) role(s) contain a matching entitlement." -ForegroundColor Cyan
         } else {
             $targetRoles = @($allRoles | Where-Object {
                 $_.PSObject.Properties['accessProfiles'] -and $_.accessProfiles |
-                    Where-Object { ($_.name ?? '').ToLower() -like "*$nameLower*" }
+                    Where-Object { ([string]$_.name).ToLower() -like "*$nameLower*" }
             })
             Write-Host "$($targetRoles.Count) role(s) contain a matching access profile." -ForegroundColor Cyan
         }
@@ -754,7 +760,7 @@ foreach ($role in $targetRoles) {
 }
 
 # Apply operation in-memory and collect previews
-$previews = [System.Collections.Generic.List[object]]::new()
+$previews = New-Object 'System.Collections.Generic.List[object]'
 
 foreach ($role in $targetRoles) {
     $rd = $roleDetails[$role.id]
@@ -848,7 +854,7 @@ $snapshotOut | ConvertTo-Json -Depth 20 | Out-File -FilePath $snapshotFile -Enco
 Write-Host "Snapshot saved: $snapshotFile" -ForegroundColor Green
 
 # Apply patches
-$results = [System.Collections.Generic.List[object]]::new()
+$results = New-Object 'System.Collections.Generic.List[object]'
 
 foreach ($preview in $previews) {
     $role   = $preview.role
