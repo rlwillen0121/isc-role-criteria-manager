@@ -1,4 +1,6 @@
 {
+  "appId": "com.rlwillen0121.isc-role-criteria-manager",
+  "productName": "ISC Role Criteria Manager",
   "asar": true,
   "directories": {
     "output": "release/"

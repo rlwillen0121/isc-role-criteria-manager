@@ -1,24 +1,13 @@
-This repository incorporates code from the SailPoint UI Development Kit
-(https://github.com/sailpoint-oss/ui-development-kit), vendored at tag v1.3.1.
+This project is a community tool derived from SailPoint's UI Development Kit
+(https://developer.sailpoint.com/docs/tools/ui-development-kit/,
+https://github.com/sailpoint-oss/ui-development-kit).
 
-LICENSE STATUS — AMBIGUOUS: No LICENSE file is present in the
-sailpoint-oss/ui-development-kit repository at tag v1.3.1, at HEAD (main branch),
-or in the package.json "license" field at v1.3.1. The GitHub repository metadata
-reports license: null. The project README has historically referenced MIT, but
-without a formal LICENSE file that statement is not legally operative.
+SailPoint's developer docs and the upstream README state the UI Development Kit is
+distributed under the MIT License and is intended for building ISC applications.
 
-Recommendation: Until SailPoint formally publishes a license for this package,
-treat the vendored code as all-rights-reserved by default. Maintainers should
-open an issue at https://github.com/sailpoint-oss/ui-development-kit requesting
-an explicit license, and pin vendored code to a specific commit or tag that
-carries a legally valid LICENSE file once one is added.
+NOTE: as of the last check, no LICENSE file is actually present in the upstream
+repository (the README references one that is not committed); treat the MIT statement
+as upstream intent pending a committed license.
 
-Verification performed 2026-05-31:
-  - https://api.github.com/repos/sailpoint-oss/ui-development-kit/git/trees/v1.3.1
-    (no LICENSE or LICENSE.md entry)
-  - https://raw.githubusercontent.com/sailpoint-oss/ui-development-kit/v1.3.1/package.json
-    (no "license" field)
-  - https://api.github.com/repos/sailpoint-oss/ui-development-kit/git/trees/main
-    (no LICENSE or LICENSE.md entry)
-  - https://api.github.com/repos/sailpoint-oss/ui-development-kit
-    ("license": null)
+SailPoint and Identity Security Cloud are trademarks of SailPoint Technologies, Inc.;
+this is an unofficial community tool, not affiliated with or endorsed by SailPoint.
