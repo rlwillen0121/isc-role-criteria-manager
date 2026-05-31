@@ -1,9 +1,27 @@
 /**
  * GitHub API Integration for CoLab Deployment
- * 
+ *
  * This module handles fetching GitHub release information and artifacts
  * for deploying CoLab items (SaaS Connectors, Workflows, etc.)
  */
+
+const GITHUB_DOWNLOAD_ALLOWLIST = new Set([
+  'raw.githubusercontent.com',
+  'github.com',
+  'objects.githubusercontent.com',
+]);
+
+export function assertGitHubAllowedUrl(url: string): void {
+  let hostname: string;
+  try {
+    hostname = new URL(url).hostname;
+  } catch {
+    throw new Error(`Invalid URL: ${url}`);
+  }
+  if (!GITHUB_DOWNLOAD_ALLOWLIST.has(hostname)) {
+    throw new Error(`URL host '${hostname}' is not on the GitHub download allowlist`);
+  }
+}
 
 export interface GitHubReleaseAsset {
   name: string;
@@ -227,6 +245,8 @@ export async function listGitHubJsonFiles(githubRepoUrl: string): Promise<GitHub
  */
 export async function getGitHubFileContent(downloadUrl: string, filename: string): Promise<GitHubFileContentResponse> {
   try {
+    assertGitHubAllowedUrl(downloadUrl);
+
     console.log(`Fetching content from: ${downloadUrl}`);
 
     const response = await fetch(downloadUrl, {
