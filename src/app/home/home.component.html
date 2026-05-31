@@ -106,7 +106,8 @@
                         <div class="form-row">
                           <mat-form-field appearance="outline" class="full-width">
                             <mat-label>Client Secret</mat-label>
-                            <input matInput type="password" [(ngModel)]="state.actualTenant.clientSecret" name="clientSecret" required>
+                            <input matInput type="password" [(ngModel)]="state.actualTenant.clientSecret" name="clientSecret"
+                                   [placeholder]="state.actualTenant.hasClientSecret ? '(already stored — enter to replace)' : ''">
                           </mat-form-field>
                         </div>
                       </div>

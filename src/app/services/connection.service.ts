@@ -23,7 +23,6 @@ export type EnvironmentInfo = {
   baseUrl: string;
   authtype: AuthMethods;
   clientId?: string;
-  clientSecret?: string;
 }
 
 @Injectable({

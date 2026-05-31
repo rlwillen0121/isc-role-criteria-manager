@@ -37,7 +37,8 @@ type Tenant = {
   apiUrl: string;
   tenantUrl: string;
   clientId?: string;
-  clientSecret?: string;
+  clientSecret?: string;    // form input only; never populated from backend
+  hasClientSecret?: boolean; // from backend; indicates a secret is already stored
   name: string;
   authtype: AuthMethods;
   tenantName: string;
@@ -266,7 +267,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       baseUrl: this.state.actualTenant.tenantUrl,
       authtype: this.state.actualTenant.authtype,
       clientId: this.state.actualTenant.clientId || undefined,
-      clientSecret: this.state.actualTenant.clientSecret || undefined
     });
 
     this.authenticating = true;
@@ -444,7 +444,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.showSnackbar('Client ID is required for PAT authentication');
         return false;
       }
-      if (!this.state.actualTenant.clientSecret?.trim()) {
+      if (!this.state.actualTenant.hasClientSecret && !this.state.actualTenant.clientSecret?.trim()) {
         this.showSnackbar('Client Secret is required for PAT authentication');
         return false;
       }
