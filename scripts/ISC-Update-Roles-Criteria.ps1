@@ -61,23 +61,22 @@ try {
 if ([string]::IsNullOrWhiteSpace($TenantUrl)) {
     Write-Host "No tenant URL found in ISC_TENANT_URL env var or -TenantUrl param." -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Enter your ISC tenant API URL and press Enter." -ForegroundColor Cyan
-    Write-Host "  Use the API URL (with .api. in it), NOT the browser/UI URL:" -ForegroundColor Cyan
-    Write-Host "    CORRECT : https://acme.api.identitynow.com" -ForegroundColor Green
-    Write-Host "    CORRECT : https://acme.api.identitynow-demo.com" -ForegroundColor Green
-    Write-Host "    WRONG   : https://acme.identitynow.com  (missing .api.)" -ForegroundColor Red
-    Write-Host "    WRONG   : https://acme.identitynow-demo.com  (missing .api.)" -ForegroundColor Red
+    Write-Host "Enter your ISC tenant URL and press Enter (either form is accepted):" -ForegroundColor Cyan
+    Write-Host "    https://acme.identitynow.com" -ForegroundColor Green
+    Write-Host "    https://acme.api.identitynow.com" -ForegroundColor Green
+    Write-Host "    https://acme.identitynow-demo.com" -ForegroundColor Green
+    Write-Host "    https://acme.api.identitynow-demo.com" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Tenant API URL: " -ForegroundColor Cyan -NoNewline
+    Write-Host "Tenant URL: " -ForegroundColor Cyan -NoNewline
     $TenantUrl = ([Console]::ReadLine()).Trim().TrimEnd('/')
 }
 
-# Auto-correct common mistake: UI URL missing .api. segment
-# e.g. https://acme.identitynow.com → https://acme.api.identitynow.com
+# Normalize: add https:// if missing, insert .api. if absent, strip trailing slash
+$TenantUrl = $TenantUrl.TrimEnd('/')
+if ($TenantUrl -notmatch '^https?://') { $TenantUrl = "https://$TenantUrl" }
 if ($TenantUrl -match '^(https://[^.]+)\.(identitynow(?:-demo)?\.com)') {
-    $corrected = "$($Matches[1]).api.$($Matches[2])"
-    Write-Host "  Note: URL auto-corrected to API format: $corrected" -ForegroundColor Yellow
-    $TenantUrl = $corrected
+    $TenantUrl = "$($Matches[1]).api.$($Matches[2])"
+    Write-Host "  URL normalized to API format: $TenantUrl" -ForegroundColor Yellow
 }
 
 $baseUrl = $TenantUrl.TrimEnd('/')

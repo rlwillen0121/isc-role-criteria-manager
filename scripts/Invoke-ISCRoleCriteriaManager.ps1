@@ -65,19 +65,20 @@ $LARGE_RESULT_THRESHOLD = 1000
 
 if ([string]::IsNullOrWhiteSpace($TenantUrl)) {
     Write-Host ''
-    Write-Host 'Enter your ISC tenant API URL (with .api. in it):' -ForegroundColor Cyan
-    Write-Host '  CORRECT : https://acme.api.identitynow.com' -ForegroundColor Green
-    Write-Host '  WRONG   : https://acme.identitynow.com  (missing .api.)' -ForegroundColor Red
+    Write-Host 'Enter your ISC tenant URL (either form is accepted):' -ForegroundColor Cyan
+    Write-Host '  https://acme.identitynow.com' -ForegroundColor Green
+    Write-Host '  https://acme.api.identitynow.com' -ForegroundColor Green
     Write-Host ''
-    Write-Host 'Tenant API URL: ' -ForegroundColor Cyan -NoNewline
+    Write-Host 'Tenant URL: ' -ForegroundColor Cyan -NoNewline
     $TenantUrl = ([Console]::ReadLine()).Trim()
 }
 
-# Auto-correct UI URL → API URL
+# Normalize: add https:// if missing, insert .api. if absent, strip trailing slash
+$TenantUrl = $TenantUrl.TrimEnd('/')
+if ($TenantUrl -notmatch '^https?://') { $TenantUrl = "https://$TenantUrl" }
 if ($TenantUrl -match '^(https://[^.]+)\.(identitynow(?:-demo)?\.com)') {
-    $corrected = "$($Matches[1]).api.$($Matches[2])"
-    Write-Host "  URL auto-corrected to API format: $corrected" -ForegroundColor Yellow
-    $TenantUrl = $corrected
+    $TenantUrl = "$($Matches[1]).api.$($Matches[2])"
+    Write-Host "  URL normalized to API format: $TenantUrl" -ForegroundColor Yellow
 }
 $baseUrl = $TenantUrl.TrimEnd('/')
 
