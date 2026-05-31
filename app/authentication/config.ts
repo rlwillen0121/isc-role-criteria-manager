@@ -18,7 +18,7 @@ export type Tenant = {
   apiUrl: string;
   tenantUrl: string;
   clientId: string | null;
-  clientSecret: string | null;
+  hasClientSecret: boolean;
   authtype: "oauth" | "pat";
   tenantName: string;
 }
@@ -34,22 +34,13 @@ export const getTenants = (): Tenant[] => {
       const envConfig = config.environments[environment];
       const storedPATTokens = getStoredPATTokens(environment);
 
-      console.log(`Test Loading tenant ${environment}:`, {
-        hasStoredTokens: !!storedPATTokens,
-        hasClientId: !!storedPATTokens?.clientId,
-        hasClientSecret: !!storedPATTokens?.clientSecret,
-        authtype: envConfig.authtype,
-        clientIdLength: storedPATTokens?.clientId?.length || 0,
-        clientSecretLength: storedPATTokens?.clientSecret?.length || 0
-      });
-
       tenants.push({
         active: environment === activeEnv,
         name: environment,
         apiUrl: envConfig.baseurl,
         tenantUrl: envConfig.tenanturl,
         clientId: storedPATTokens?.clientId || null,
-        clientSecret: storedPATTokens?.clientSecret || null,
+        hasClientSecret: !!(storedPATTokens?.clientSecret),
         authtype: envConfig.authtype,
         tenantName: environment,
       });

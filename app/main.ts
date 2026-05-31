@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, screen, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, screen, session, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as url from 'url';
@@ -42,9 +42,14 @@ function createWindow(): BrowserWindow {
     height: size.height / 2,
     autoHideMenuBar: false,
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
+      // sandbox must be false: the preload requires sibling modules via relative require()
+      // (compiled multi-file tsc output). Electron 20+ defaults sandbox:true when
+      // nodeIntegration is false, which prevents relative requires in the preload.
+      // Bundling the preload into a single file would allow sandbox:true here.
+      sandbox: false,
       preload: path.join(__dirname, 'preload.js'),
-      allowRunningInsecureContent: serve,
+      allowRunningInsecureContent: false,
       contextIsolation: true,
     },
   });
@@ -52,6 +57,14 @@ function createWindow(): BrowserWindow {
   win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url); // Open URL in user's browser
     return { action: 'deny' }; // Prevent the app from opening the URL
+  });
+
+  win.webContents.on('will-navigate', (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
+    if (parsedUrl.protocol !== 'file:' &&
+        !(parsedUrl.protocol === 'http:' && parsedUrl.hostname === 'localhost')) {
+      event.preventDefault();
+    }
   });
 
   if (serve) {
@@ -108,7 +121,19 @@ try {
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
   // Added 400 ms to fix the black background issue while using transparent window. More detais at https://github.com/electron/electron/issues/15947
-  app.on('ready', () => setTimeout(createWindow, 400));
+  app.on('ready', () => {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self'; script-src 'self' 'sha256-f8OOSwvCiwgVGvwZ0ysTVCygKdip+6P2zgqnAzLv4N4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'"
+          ]
+        }
+      });
+    });
+    setTimeout(createWindow, 400);
+  });
 
   // Quit when all windows are closed.
   app.on('window-all-closed', () => {

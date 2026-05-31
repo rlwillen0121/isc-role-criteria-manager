@@ -1,8 +1,17 @@
 import { dialog, shell } from "electron";
+import { randomBytes, createHash } from "crypto";
 import { getTokenDetails, parseJwt } from "./auth";
 import { getConfig, getConfigEnvironment, getSecureValue, setSecureValue } from "./config";
 import { LambdaUUIDResponse, RefreshResponse, TokenResponse, TokenSet, EncryptedTokenData } from "./types";
 import { generateKeyPair, decryptToken } from "./crypto";
+
+function generateCodeVerifier(): string {
+    return randomBytes(32).toString('base64url');
+}
+
+function generateCodeChallenge(verifier: string): string {
+    return createHash('sha256').update(verifier).digest('base64url');
+}
 
 // In-memory storage for current OAuth keypair
 let currentOAuthKeyPair: {
@@ -166,7 +175,10 @@ export const OAuthLogin = async ({ tenant, baseAPIUrl, environment }: { tenant: 
         const publicKeyBase64 = await generateFreshKeyPair();
         
         
-            // Step 2: Initiate authentication flow with the public key
+            // Step 2: Initiate authentication flow with the public key and PKCE
+            const codeVerifier = generateCodeVerifier();
+            const codeChallenge = generateCodeChallenge(codeVerifier);
+
             const authResponse = await fetch(authLambdaAuthURL, {
                 method: 'POST',
                 headers: {
@@ -175,7 +187,10 @@ export const OAuthLogin = async ({ tenant, baseAPIUrl, environment }: { tenant: 
                 body: JSON.stringify({
                     tenant,
                     apiBaseURL: baseAPIUrl,
-                    publicKey: publicKeyBase64
+                    publicKey: publicKeyBase64,
+                    code_verifier: codeVerifier,
+                    code_challenge: codeChallenge,
+                    code_challenge_method: 'S256',
                 }),
             });
 
@@ -184,14 +199,11 @@ export const OAuthLogin = async ({ tenant, baseAPIUrl, environment }: { tenant: 
             }
 
             const authData: LambdaUUIDResponse = await authResponse.json();
-            console.log('Auth Response:', authData);
 
             // Step 3: Present Auth URL to user
-            console.log('Attempting to open browser for authentication');
             try {
                 // Using Electron's shell.openExternal to open the browser
                 await shell.openExternal(authData.authURL);
-                console.log('Successfully opened OAuth URL in default browser');
 
             } catch (err) {
                 dialog.showMessageBox({
@@ -201,7 +213,6 @@ export const OAuthLogin = async ({ tenant, baseAPIUrl, environment }: { tenant: 
                     buttons: ['OK']
                 });
                 console.warn('Cannot open browser automatically. Please manually open OAuth login page below');
-                console.log('OAuth URL:', authData.authURL);
                 // Continue with the flow even if browser opening fails
             }
 

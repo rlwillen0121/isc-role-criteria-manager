@@ -83,7 +83,7 @@ export type Tenant = {
   apiUrl: string;
   tenantUrl: string;
   clientId?: string;
-  clientSecret?: string;
+  hasClientSecret?: boolean;
   authtype: AuthMethods;
   tenantName: string;
 }
