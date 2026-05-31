@@ -1,6 +1,7 @@
 import {
   applyValueInvariant,
   buildLeafNode,
+  canonicalizeIdentityAttr,
   cloneCriteria,
   collectLeafAttributes,
   countNodes,
@@ -8,7 +9,10 @@ import {
   isComposite,
   isLeaf,
   leafValues,
+  MembershipSelector,
+  normalizeIdentityAttr,
   parseCriteria,
+  roleMatchesCriteriaFilter,
 } from './criteria.model';
 
 describe('criteria.model', () => {
@@ -240,6 +244,76 @@ describe('criteria.model', () => {
         key: { type: 'ACCOUNT', property: 'memberOf' },
         values: ['x', 'y'],
       });
+    });
+    it('canonicalizes a bare IDENTITY attribute by adding the attribute. prefix', () => {
+      expect(buildLeafNode('cloudLifecycleState', 'EQUALS', ['active'])).toEqual({
+        operation: 'EQUALS',
+        key: { type: 'IDENTITY', property: 'attribute.cloudLifecycleState' },
+        stringValue: 'active',
+      });
+    });
+    it('does not double-prefix an already-prefixed IDENTITY attribute', () => {
+      expect(buildLeafNode('attribute.dept', 'EQUALS', ['sales'])).toEqual({
+        operation: 'EQUALS',
+        key: { type: 'IDENTITY', property: 'attribute.dept' },
+        stringValue: 'sales',
+      });
+    });
+    it('does NOT add attribute. prefix to ACCOUNT or ENTITLEMENT key types', () => {
+      expect(buildLeafNode('memberOf', 'EQUALS', ['x'], 'ACCOUNT').key?.property).toBe('memberOf');
+      expect(buildLeafNode('memberOf', 'EQUALS', ['x'], 'ENTITLEMENT').key?.property).toBe('memberOf');
+    });
+  });
+
+  describe('normalizeIdentityAttr / canonicalizeIdentityAttr', () => {
+    it('normalizeIdentityAttr strips the attribute. prefix', () => {
+      expect(normalizeIdentityAttr('attribute.cloudLifecycleState')).toBe('cloudLifecycleState');
+      expect(normalizeIdentityAttr('cloudLifecycleState')).toBe('cloudLifecycleState');
+    });
+
+    it('normalizeIdentityAttr is case-insensitive for the prefix', () => {
+      expect(normalizeIdentityAttr('Attribute.dept')).toBe('dept');
+      expect(normalizeIdentityAttr('ATTRIBUTE.dept')).toBe('dept');
+    });
+
+    it('canonicalizeIdentityAttr adds the prefix when absent', () => {
+      expect(canonicalizeIdentityAttr('cloudLifecycleState')).toBe('attribute.cloudLifecycleState');
+    });
+
+    it('canonicalizeIdentityAttr is idempotent', () => {
+      expect(canonicalizeIdentityAttr('attribute.cloudLifecycleState')).toBe('attribute.cloudLifecycleState');
+    });
+  });
+
+  describe('roleMatchesCriteriaFilter — prefix-agnostic IDENTITY matching', () => {
+    const makeLeaf = (property: string, value: string): CriteriaNode => ({
+      operation: 'EQUALS',
+      key: { type: 'IDENTITY', property },
+      stringValue: value,
+    });
+
+    const wrap = (criteria: CriteriaNode): MembershipSelector =>
+      ({ type: 'STANDARD', criteria });
+
+    it('matches when user types bare name and stored key has prefix', () => {
+      const m = wrap(makeLeaf('attribute.cloudLifecycleState', 'active'));
+      expect(roleMatchesCriteriaFilter(m, { attribute: 'cloudLifecycleState' })).toBe(true);
+    });
+
+    it('matches when user types prefixed name and stored key also has prefix', () => {
+      const m = wrap(makeLeaf('attribute.cloudLifecycleState', 'active'));
+      expect(roleMatchesCriteriaFilter(m, { attribute: 'attribute.cloudLifecycleState' })).toBe(true);
+    });
+
+    it('matches a substring of the normalized attribute name', () => {
+      const m = wrap(makeLeaf('attribute.cloudLifecycleState', 'active'));
+      // 'lifecycle' is a substring of 'cloudLifecycleState' (normalized)
+      expect(roleMatchesCriteriaFilter(m, { attribute: 'lifecycle' })).toBe(true);
+    });
+
+    it('does not match unrelated attributes', () => {
+      const m = wrap(makeLeaf('attribute.dept', 'sales'));
+      expect(roleMatchesCriteriaFilter(m, { attribute: 'cloudLifecycleState' })).toBe(false);
     });
   });
 });

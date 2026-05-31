@@ -162,6 +162,20 @@ function Copy-Deep($obj) {
     $obj | ConvertTo-Json -Depth 20 | ConvertFrom-Json
 }
 
+# Strips a leading 'attribute.' prefix (case-insensitive) from an IDENTITY
+# key property for display and prefix-agnostic comparison.
+function Get-NormalizedAttr([string]$attr) {
+    return $attr -ireplace '^attribute\.', ''
+}
+
+# Returns $true when $stored and $queried refer to the same IDENTITY attribute,
+# treating 'cloudLifecycleState' and 'attribute.cloudLifecycleState' as equal.
+# For non-IDENTITY keys ($isIdentity=$false), performs a plain -eq comparison.
+function Compare-IdentityAttr([string]$stored, [string]$queried, [bool]$isIdentity = $true) {
+    if (-not $isIdentity) { return $stored -eq $queried }
+    return (Get-NormalizedAttr $stored) -eq (Get-NormalizedAttr $queried)
+}
+
 # Returns all leaf values as a flat array (empty when unset).
 function Get-LeafValues($node) {
     if ($node.PSObject.Properties['values'] -and $null -ne $node.values -and $node.values.Count -gt 0) {
@@ -212,7 +226,10 @@ function Write-CriteriaTree($node, [int]$depth = 0) {
         $valStr = if ($vals.Count -eq 0) { '(no value)' }
                   elseif ($vals.Count -eq 1) { $vals[0] }
                   else { '[' + ($vals -join ', ') + ']' }
-        $prop = if ($node.PSObject.Properties['key'] -and $node.key) { $node.key.property } else { '(no key)' }
+        $rawProp = if ($node.PSObject.Properties['key'] -and $node.key) { $node.key.property } else { '(no key)' }
+        $prop = if ($node.PSObject.Properties['key'] -and $node.key -and $node.key.type -eq 'IDENTITY') {
+                    Get-NormalizedAttr $rawProp
+                } else { $rawProp }
         Write-Host "${pad}$prop" -ForegroundColor Yellow -NoNewline
         Write-Host " $($node.operation) " -ForegroundColor DarkGray -NoNewline
         Write-Host $valStr -ForegroundColor White
@@ -224,7 +241,8 @@ function Write-LeafAttributes($node) {
     if ($node.PSObject.Properties['key'] -and $node.key) {
         $vals = Get-LeafValues $node
         $valStr = if ($vals.Count -eq 1) { $vals[0] } else { $vals -join ', ' }
-        Write-Host "      $($node.key.property)  ($valStr)" -ForegroundColor Yellow
+        $dispProp = if ($node.key.type -eq 'IDENTITY') { Get-NormalizedAttr $node.key.property } else { $node.key.property }
+        Write-Host "      $dispProp  ($valStr)" -ForegroundColor Yellow
     }
     if ($node.PSObject.Properties['children'] -and $node.children) {
         foreach ($c in $node.children) { Write-LeafAttributes $c }
@@ -242,9 +260,12 @@ function Test-NodeMatchesFilter($node, [string]$attribute, [string]$operation, [
         }
         return $false
     }
-    # leaf
+    # leaf — normalize IDENTITY key property and filter attribute before substring match
     $prop = if ($node.PSObject.Properties['key'] -and $node.key) { $node.key.property } else { '' }
-    if ($prop -notlike "*$attribute*") { return $false }
+    $isIdentity = $node.PSObject.Properties['key'] -and $node.key -and $node.key.type -eq 'IDENTITY'
+    $propNorm   = if ($isIdentity) { Get-NormalizedAttr $prop }      else { $prop }
+    $attrNorm   = if ($isIdentity) { Get-NormalizedAttr $attribute }  else { $attribute }
+    if ($propNorm -notlike "*$attrNorm*") { return $false }
     if (-not [string]::IsNullOrEmpty($operation) -and $node.operation -ne $operation) { return $false }
     if (-not [string]::IsNullOrEmpty($value)) {
         $vals = Get-LeafValues $node
@@ -287,7 +308,8 @@ function Build-MembershipPatch($newTree, $membership, [bool]$hadCriteria) {
 # Walk all leaves; replace values on every leaf where key.property == attribute
 # AND current value set contains oldValue.
 function Walk-UpdateValue($node, [string]$attribute, [string]$oldValue, [string[]]$newValues, [ref]$matched) {
-    if ($node.PSObject.Properties['key'] -and $node.key -and $node.key.property -eq $attribute) {
+    $isIdentity = $node.PSObject.Properties['key'] -and $node.key -and $node.key.type -eq 'IDENTITY'
+    if ($node.PSObject.Properties['key'] -and $node.key -and (Compare-IdentityAttr $node.key.property $attribute $isIdentity)) {
         $vals = Get-LeafValues $node
         if ($node.stringValue -eq $oldValue -or $vals -contains $oldValue) {
             $matched.Value = $true
@@ -319,7 +341,8 @@ function Invoke-UpdateValue($membership, [string]$attribute, [string]$oldValue, 
 # Depth-first; stop at the FIRST matching leaf and append de-duplicated values.
 function Walk-AddValues($node, [string]$attribute, [string[]]$newValues, [ref]$matched, [ref]$changed) {
     if ($matched.Value) { return }   # already found first leaf — stop
-    if ($node.PSObject.Properties['key'] -and $node.key -and $node.key.property -eq $attribute) {
+    $isIdentity = $node.PSObject.Properties['key'] -and $node.key -and $node.key.type -eq 'IDENTITY'
+    if ($node.PSObject.Properties['key'] -and $node.key -and (Compare-IdentityAttr $node.key.property $attribute $isIdentity)) {
         $matched.Value = $true
         $current = Get-LeafValues $node
         $toAdd   = @($newValues | Where-Object { $current -notcontains $_ })
@@ -381,7 +404,8 @@ function Invoke-AddBlock($membership, [string]$attribute, [string]$leafOp, [stri
 # Returns rebuilt node (or $null when removed entirely).
 function Rebuild-Remove($node, [string]$attribute, [string]$mode, [string]$value, [ref]$changed) {
     # Target leaf
-    if ($node.PSObject.Properties['key'] -and $node.key -and $node.key.property -eq $attribute `
+    $isIdentity = $node.PSObject.Properties['key'] -and $node.key -and $node.key.type -eq 'IDENTITY'
+    if ($node.PSObject.Properties['key'] -and $node.key -and (Compare-IdentityAttr $node.key.property $attribute $isIdentity) `
         -and -not ($node.PSObject.Properties['children'] -and $node.children)) {
         if ($mode -eq 'attribute') {
             $changed.Value = $true
@@ -446,9 +470,10 @@ function Rebuild-Consolidate($node, [string]$attribute, [ref]$matched) {
     # Only collapse at OR level
     if ($node.operation -ne 'OR') { return $node }
 
-    # Group matching leaves by their comparison operation
+    # Group matching leaves by their comparison operation (prefix-agnostic for IDENTITY)
     $matchingLeaves = @($node.children | Where-Object {
-        $_.PSObject.Properties['key'] -and $_.key -and $_.key.property -eq $attribute `
+        $isId = $_.PSObject.Properties['key'] -and $_.key -and $_.key.type -eq 'IDENTITY'
+        $_.PSObject.Properties['key'] -and $_.key -and (Compare-IdentityAttr $_.key.property $attribute $isId) `
         -and -not ($_.PSObject.Properties['children'] -and $_.children)
     })
     if ($matchingLeaves.Count -lt 2) { return $node }
@@ -468,8 +493,9 @@ function Rebuild-Consolidate($node, [string]$attribute, [ref]$matched) {
     $emitted     = @{}
     $newChildren = @()
     foreach ($child in $node.children) {
+        $isId     = $child.PSObject.Properties['key'] -and $child.key -and $child.key.type -eq 'IDENTITY'
         $isTarget = $child.PSObject.Properties['key'] -and $child.key `
-                    -and $child.key.property -eq $attribute `
+                    -and (Compare-IdentityAttr $child.key.property $attribute $isId) `
                     -and -not ($child.PSObject.Properties['children'] -and $child.children) `
                     -and $opsToMerge -contains $child.operation
         if ($isTarget) {

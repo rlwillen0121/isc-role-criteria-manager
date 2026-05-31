@@ -25,12 +25,28 @@ import {
   cloneCriteria,
   CompositeOperation,
   CriteriaNode,
+  CriteriaKey,
   isComposite,
   LeafOperation,
   leafValues,
   MembershipSelector,
+  normalizeIdentityAttr,
   parseCriteria,
 } from './criteria.model';
+
+/**
+ * Returns true when the stored key matches the queried attribute name, handling
+ * the optional `attribute.` prefix on IDENTITY keys transparently.
+ * ACCOUNT/ENTITLEMENT keys are compared verbatim (those use source-schema names).
+ */
+function attrMatch(
+  key: CriteriaKey | null | undefined,
+  queried: string
+): boolean {
+  if (!key) return false;
+  if (key.type !== 'IDENTITY') return key.property === queried;
+  return normalizeIdentityAttr(key.property) === normalizeIdentityAttr(queried);
+}
 
 /** A single RFC-6902 JSON Patch operation against the role. */
 export interface JsonPatchOp {
@@ -105,7 +121,7 @@ export function updateValue(
   let matched = false;
 
   const walk = (node: CriteriaNode): void => {
-    if (node.key?.property === params.attribute) {
+    if (attrMatch(node.key, params.attribute)) {
       const values = leafValues(node);
       if (
         node.stringValue === params.oldValue ||
@@ -156,7 +172,7 @@ export function addValues(
   let changed = false;
 
   const walk = (node: CriteriaNode): boolean => {
-    if (node.key?.property === params.attribute) {
+    if (attrMatch(node.key, params.attribute)) {
       matched = true;
       const result = leafValues(node);
       for (const v of params.addValues) {
@@ -282,7 +298,7 @@ export function removeCriteria(
 
   const rebuild = (node: CriteriaNode): CriteriaNode | null => {
     // Leaf for the target attribute.
-    if (node.key?.property === params.attribute && !node.children) {
+    if (attrMatch(node.key, params.attribute) && !node.children) {
       if (params.mode === 'attribute') {
         changed = true;
         return null;
@@ -386,7 +402,7 @@ export function consolidate(
     // membership semantics are preserved — merging them under one operator
     // would silently change which identities match.
     const matches = (child: CriteriaNode): boolean =>
-      child.key?.property === params.attribute && !child.children;
+      attrMatch(child.key, params.attribute) && !child.children;
 
     const opCounts = new Map<string, number>();
     for (const child of node.children) {

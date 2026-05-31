@@ -701,4 +701,80 @@ describe('criteria-operations', () => {
       expect((result.tree as CriteriaNode).stringValue).toBe('2');
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Prefix-agnostic matching (IDENTITY keys only)
+  // -------------------------------------------------------------------------
+  describe('prefix-agnostic matching', () => {
+    it('updateValue: bare attribute matches prefixed stored key', () => {
+      const m = membership(leaf('attribute.cloudLifecycleState', 'active'));
+      const result = updateValue(m, {
+        attribute: 'cloudLifecycleState',
+        oldValue: 'active',
+        newValues: ['inactive'],
+      });
+      expect(result.status).toBe('ready');
+      expect((result.tree as CriteriaNode).stringValue).toBe('inactive');
+    });
+
+    it('updateValue: prefixed attribute matches bare stored key', () => {
+      const m = membership(leaf('cloudLifecycleState', 'active'));
+      const result = updateValue(m, {
+        attribute: 'attribute.cloudLifecycleState',
+        oldValue: 'active',
+        newValues: ['inactive'],
+      });
+      expect(result.status).toBe('ready');
+      expect((result.tree as CriteriaNode).stringValue).toBe('inactive');
+    });
+
+    it('addValues: bare attribute matches prefixed stored key', () => {
+      const m = membership(leaf('attribute.state', 'active'));
+      const result = addValues(m, {
+        attribute: 'state',
+        addValues: ['loa'],
+      });
+      expect(result.status).toBe('ready');
+      expect((result.tree as CriteriaNode).values).toEqual(['active', 'loa']);
+    });
+
+    it('removeCriteria: bare attribute matches prefixed stored key', () => {
+      const m = membership(leaf('attribute.duNumber', '011'));
+      const result = removeCriteria(m, {
+        attribute: 'duNumber',
+        mode: 'attribute',
+      });
+      expect(result.status).toBe('ready');
+      expect(result.tree).toBeNull();
+    });
+
+    it('consolidate: bare attribute matches prefixed stored key', () => {
+      const tree: CriteriaNode = {
+        operation: 'OR',
+        children: [
+          leaf('attribute.state', 'active'),
+          leaf('attribute.state', 'loa'),
+        ],
+      };
+      const result = consolidate(membership(tree), { attribute: 'state' });
+      expect(result.status).toBe('ready');
+      expect((result.tree as CriteriaNode).values).toEqual(['active', 'loa']);
+    });
+
+    it('does NOT normalize ACCOUNT key matching — must be exact', () => {
+      const accountLeaf: CriteriaNode = {
+        operation: 'EQUALS',
+        key: { type: 'ACCOUNT', property: 'memberOf', sourceId: 'src-1' },
+        stringValue: 'group1',
+      };
+      const m = membership(accountLeaf);
+      // Querying with a stripped name should NOT match an ACCOUNT key
+      const result = removeCriteria(m, { attribute: 'memberOf', mode: 'attribute' });
+      // The ACCOUNT key 'memberOf' exactly equals 'memberOf' → still matches (verbatim)
+      expect(result.status).toBe('ready');
+      // But querying with a fabricated prefix should NOT match
+      const result2 = removeCriteria(m, { attribute: 'attribute.memberOf', mode: 'attribute' });
+      expect(result2.status).toBe('skipped');
+    });
+  });
 });
