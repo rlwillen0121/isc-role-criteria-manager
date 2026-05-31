@@ -14,7 +14,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { SharedModule } from '../shared/shared.module';
@@ -37,14 +36,11 @@ type Tenant = {
   active: boolean;
   apiUrl: string;
   tenantUrl: string;
-  nermBaseUrl?: string;
   clientId?: string;
   clientSecret?: string;
   name: string;
   authtype: AuthMethods;
   tenantName: string;
-  bypassTLS?: boolean;
-  caCertPath?: string;
 }
 
 type ComponentState = {
@@ -78,7 +74,6 @@ type ComponentState = {
     MatSelectModule,
     MatInputModule,
     MatRadioModule,
-    MatCheckboxModule,
     MatSnackBarModule,
     FormsModule,
     SharedModule,
@@ -92,12 +87,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     active: false,
     apiUrl: '',
     tenantUrl: '',
-    nermBaseUrl: '',
     name: '',
     authtype: 'oauth',
     tenantName: '',
-    bypassTLS: false,
-    caCertPath: '',
   }
 
   // State management
@@ -506,12 +498,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         environmentName: this.state.actualTenant.name,
         tenantUrl: this.state.actualTenant.tenantUrl,
         baseUrl: this.state.actualTenant.apiUrl,
-        nermBaseUrl: this.state.actualTenant.nermBaseUrl,
         authtype: this.state.actualTenant.authtype as 'oauth' | 'pat',
         clientId: clientId,
         clientSecret: clientSecret,
-        bypassTLS: this.state.actualTenant.bypassTLS || false,
-        caCertPath: this.state.actualTenant.caCertPath || '',
       });
 
       if (result.success) {
@@ -556,7 +545,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (this.state.selectedTenant === 'new' && this.state.actualTenant?.tenantName) {
       this.state.actualTenant.tenantUrl = `https://${this.state.actualTenant.tenantName}.identitynow.com`;
       this.state.actualTenant.apiUrl = `https://${this.state.actualTenant.tenantName}.api.identitynow.com`;
-      this.state.actualTenant.nermBaseUrl = `https://${this.state.actualTenant.tenantName}.nonemployee.com/api`;
 
       if (this.state.actualTenant.authtype === 'oauth') {
         void this.testOAuthConnection();
@@ -714,43 +702,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   // Utility Methods:
-
-  onTlsBypassChange(): void {
-    if (this.state.actualTenant.bypassTLS) {
-      // If TLS bypass is enabled, clear the CA certificate path
-      this.state.actualTenant.caCertPath = '';
-    }
-  }
-
-  onCaCertPathChange(): void {
-    if (this.state.actualTenant.caCertPath && this.state.actualTenant.caCertPath.trim()) {
-      // If CA certificate path is provided, disable TLS bypass
-      this.state.actualTenant.bypassTLS = false;
-    }
-  }
-
-  async browseCaCertFile(): Promise<void> {
-    if (this.state.isWebMode) {
-      this.showSnackbar('File browsing is not available in web mode. Please enter the full file path manually.');
-      return;
-    }
-
-    try {
-      const result = await this.electronService.getApi().browseForFile();
-      
-      if (result.success && result.filePath) {
-        this.state.actualTenant.caCertPath = result.filePath;
-        // When a certificate is selected, disable TLS bypass
-        this.state.actualTenant.bypassTLS = false;
-        this.showSnackbar('Certificate file selected successfully');
-      } else if (!result.canceled) {
-        this.showSnackbar('Failed to select file: ' + (result.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('Error browsing for CA certificate file:', error);
-      this.showSnackbar('Failed to open file browser');
-    }
-  }
 
   showSnackbar(message: string): void {
     this.snackBar.open(message, 'Close', {

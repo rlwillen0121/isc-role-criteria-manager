@@ -262,28 +262,6 @@ try {
     }
   });
 
-  ipcMain.handle('browse-for-file', async () => {
-    try {
-      const result = await dialog.showOpenDialog(win!, {
-        title: 'Select CA Certificate File',
-        filters: [
-          { name: 'Certificate Files', extensions: ['pem', 'crt', 'cer', 'p7b', 'p7c', 'der'] },
-          { name: 'All Files', extensions: ['*'] }
-        ],
-        properties: ['openFile']
-      });
-
-      if (result.canceled || result.filePaths.length === 0) {
-        return { success: false, canceled: true };
-      }
-
-      return { success: true, filePath: result.filePaths[0] };
-    } catch (error) {
-      console.error('Error opening file dialog:', error);
-      return { success: false, error: 'Failed to open file dialog' };
-    }
-  });
-
   ipcMain.handle('browse-for-json-file', async () => {
     try {
       const result = await dialog.showOpenDialog(win!, {
