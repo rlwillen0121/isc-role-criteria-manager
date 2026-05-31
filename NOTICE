@@ -1,4 +1,24 @@
 This repository incorporates code from the SailPoint UI Development Kit
 (https://github.com/sailpoint-oss/ui-development-kit), vendored at tag v1.3.1.
-The kit's README states it is distributed under the MIT License, though no
-LICENSE file was included in its repository at that tag.
+
+LICENSE STATUS — AMBIGUOUS: No LICENSE file is present in the
+sailpoint-oss/ui-development-kit repository at tag v1.3.1, at HEAD (main branch),
+or in the package.json "license" field at v1.3.1. The GitHub repository metadata
+reports license: null. The project README has historically referenced MIT, but
+without a formal LICENSE file that statement is not legally operative.
+
+Recommendation: Until SailPoint formally publishes a license for this package,
+treat the vendored code as all-rights-reserved by default. Maintainers should
+open an issue at https://github.com/sailpoint-oss/ui-development-kit requesting
+an explicit license, and pin vendored code to a specific commit or tag that
+carries a legally valid LICENSE file once one is added.
+
+Verification performed 2026-05-31:
+  - https://api.github.com/repos/sailpoint-oss/ui-development-kit/git/trees/v1.3.1
+    (no LICENSE or LICENSE.md entry)
+  - https://raw.githubusercontent.com/sailpoint-oss/ui-development-kit/v1.3.1/package.json
+    (no "license" field)
+  - https://api.github.com/repos/sailpoint-oss/ui-development-kit/git/trees/main
+    (no LICENSE or LICENSE.md entry)
+  - https://api.github.com/repos/sailpoint-oss/ui-development-kit
+    ("license": null)
