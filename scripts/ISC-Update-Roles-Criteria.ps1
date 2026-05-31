@@ -30,7 +30,7 @@
 #   ./ISC-bulk-update-role-criteria.ps1 -WhatIf
 # =============================================================================
 
-#Requires -Version 5.1
+#Requires -Version 4.0
 
 [CmdletBinding(SupportsShouldProcess)]
 param (
@@ -47,6 +47,12 @@ param (
     # Falls back to interactive paste if nothing else is available.
     [string]$BearerToken  = $env:ISC_BEARER_TOKEN
 )
+
+# TLS 1.2 — required for SailPoint ISC; default on PS4/Win8.1 is TLS 1.0/1.1
+try {
+    $tls12 = [Net.SecurityProtocolType]::Tls12
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $tls12
+} catch { }
 
 # =============================================================================
 # CONFIGURATION — TENANT URL

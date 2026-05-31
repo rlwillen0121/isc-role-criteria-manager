@@ -10,7 +10,7 @@ Two ways to use it — pick what fits your workflow:
 
 | | Electron app | PowerShell scripts |
 |---|---|---|
-| **Requires** | Node 20+, npm | PowerShell 5.1+ |
+| **Requires** | Node 20+, npm | PowerShell 4.0+ |
 | **Auth** | OAuth2 or PAT (via system keychain) | OAuth2 client credentials or bearer token |
 | **Best for** | Interactive bulk editing with visual diff | Automation, CI/CD, headless environments |
 
