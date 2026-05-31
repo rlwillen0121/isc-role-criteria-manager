@@ -224,6 +224,79 @@ describe('RoleCriteriaManagerComponent', () => {
     });
   });
 
+  describe('criteriaTreeToSearchQuery', () => {
+    // Access the private translator + leaf helper for direct assertions.
+    function q(node: unknown): string {
+      return (component as never as { criteriaTreeToSearchQuery: (n: unknown) => string })
+        .criteriaTreeToSearchQuery(node);
+    }
+    const leaf = (property: string, operation: string, value: string | string[], type = 'IDENTITY') => {
+      const base: Record<string, unknown> = { operation, key: { type, property } };
+      if (Array.isArray(value)) base['values'] = value;
+      else base['stringValue'] = value;
+      return base;
+    };
+    const composite = (operation: string, children: unknown[]) => ({ operation, children });
+
+    it('returns empty string for null / empty leaf', () => {
+      expect(q(null)).toBe('');
+      expect(q(leaf('location', 'EQUALS', []))).toBe('');
+    });
+
+    it('prefixes IDENTITY attributes with `attributes.` and quotes the value (EQUALS)', () => {
+      expect(q(leaf('location', 'EQUALS', 'Seattle'))).toBe('attributes.location:"Seattle"');
+    });
+
+    it('strips an optional `attribute.` prefix before prepending `attributes.`', () => {
+      expect(q(leaf('attribute.location', 'EQUALS', 'Seattle'))).toBe('attributes.location:"Seattle"');
+      expect(q(leaf('attribute.cloudLifecycleState', 'EQUALS', 'active')))
+        .toBe('attributes.cloudLifecycleState:"active"');
+    });
+
+    it('does not prefix non-IDENTITY key types', () => {
+      expect(q(leaf('memberOf', 'EQUALS', 'Admins', 'ENTITLEMENT'))).toBe('memberOf:"Admins"');
+    });
+
+    it('encodes operation semantics with quoted wildcards', () => {
+      expect(q(leaf('email', 'ENDS_WITH', '@acmecorp.com'))).toBe('attributes.email:"*@acmecorp.com"');
+      expect(q(leaf('title', 'CONTAINS', 'Engineer'))).toBe('attributes.title:"*Engineer*"');
+      expect(q(leaf('title', 'STARTS_WITH', 'Senior'))).toBe('attributes.title:"Senior*"');
+      expect(q(leaf('workerType', 'NOT_EQUALS', 'Contractor'))).toBe('NOT attributes.workerType:"Contractor"');
+    });
+
+    it('ORs multi-value leaves and parenthesizes', () => {
+      expect(q(leaf('location', 'EQUALS', ['Seattle', 'Austin'])))
+        .toBe('(attributes.location:"Seattle" OR attributes.location:"Austin")');
+    });
+
+    it('ANDs multi-value NOT_EQUALS (exclude all)', () => {
+      expect(q(leaf('location', 'NOT_EQUALS', ['Seattle', 'Austin'])))
+        .toBe('(NOT attributes.location:"Seattle" AND NOT attributes.location:"Austin")');
+    });
+
+    it('joins composites with AND/OR and collapses single-child composites', () => {
+      expect(q(composite('AND', [leaf('location', 'EQUALS', 'Seattle'), leaf('title', 'CONTAINS', 'Engineer')])))
+        .toBe('(attributes.location:"Seattle" AND attributes.title:"*Engineer*")');
+      expect(q(composite('AND', [leaf('title', 'CONTAINS', 'Engineer')])))
+        .toBe('attributes.title:"*Engineer*"');
+    });
+
+    it('handles nested AND/OR trees', () => {
+      const tree = composite('AND', [
+        leaf('workerType', 'EQUALS', 'FTE'),
+        composite('OR', [leaf('location', 'EQUALS', 'Seattle'), leaf('location', 'EQUALS', 'Austin')]),
+        leaf('title', 'CONTAINS', 'Engineer'),
+      ]);
+      expect(q(tree)).toBe(
+        '(attributes.workerType:"FTE" AND (attributes.location:"Seattle" OR attributes.location:"Austin") AND attributes.title:"*Engineer*")'
+      );
+    });
+
+    it('escapes embedded quotes and backslashes', () => {
+      expect(q(leaf('displayName', 'EQUALS', 'a"b\\c'))).toBe('attributes.displayName:"a\\"b\\\\c"');
+    });
+  });
+
   describe('execute', () => {
     beforeEach(() => {
       component.roleRows = [

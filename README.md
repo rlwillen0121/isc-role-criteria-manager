@@ -134,7 +134,7 @@ Full feature parity with the Electron app. Four-step interactive workflow: Targe
 | `C` | Consolidate sibling OR leaves for the same attribute (same comparison operator only) |
 | `X` | Restore roles from a saved snapshot file |
 
-**Preview step:** Computes and displays before/after criteria trees for every matched role before prompting to apply.
+**Preview step:** Computes and displays before/after criteria trees for every matched role before prompting to apply, plus an **identity-impact preview** — before/after identity match counts fetched live from the ISC Search API (`POST /v2025/search/count`), with a signed delta, so you can see how many identities each change adds or removes before writing.
 
 **Snapshot:** Automatically saves a pre-run snapshot before writing; `X` operation restores from any saved snapshot.
 
