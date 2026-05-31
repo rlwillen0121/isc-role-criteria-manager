@@ -22,6 +22,7 @@
     "mac",
     "linux"
   ],
+  "license": "MIT",
   "main": "electron-dist/main.js",
   "private": true,
   "workspaces": [
