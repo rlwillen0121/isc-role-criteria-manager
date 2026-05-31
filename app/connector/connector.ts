@@ -6,7 +6,7 @@
  */
 
 import { getActiveEnvironment, apiConfig } from '../authentication/auth';
-import { getGitHubReleaseArtifact } from '../github/github';
+import { assertGitHubAllowedUrl, getGitHubReleaseArtifact } from '../github/github';
 import { genericGet, genericPost } from '../sailpoint-sdk/sailpoint-sdk';
 import * as sdk from 'sailpoint-api-client';
 
@@ -373,8 +373,10 @@ export async function downloadFile(
   outputPath: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    assertGitHubAllowedUrl(url);
+
     console.log(`Downloading file from: ${url}`);
-    
+
     const response = await fetch(url);
     
     if (!response.ok) {
