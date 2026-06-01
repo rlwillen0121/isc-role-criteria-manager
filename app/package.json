@@ -5,7 +5,7 @@
     "name": "Ryan Willen",
     "email": "ryan.willen@gmail.com"
   },
-  "version": "1.3.1",
+  "version": "1.3.2",
   "license": "MIT",
   "main": "main.js",
   "private": true,
