@@ -1,4 +1,4 @@
-# isc-role-criteria-manager — Electron App Walkthrough
+# isc-role-criteria-manager — Walkthrough
 
 > Screenshots and walkthroughs captured against a sandbox ISC tenant.
 > All Apply operations shown here used the dry-run safety rail or were
@@ -15,6 +15,7 @@
 5. [Preview — before/after diff + identity counts](#5-preview--beforeafter-diff--identity-counts)
 6. [Apply → Results](#6-apply--results)
 7. [Restore from Snapshot](#7-restore-from-snapshot)
+8. [PowerShell scripts](#8-powershell-scripts)
 
 ---
 
@@ -79,6 +80,8 @@ After clicking **Find Roles**, matching roles appear in a table with their membe
 
 Once you've selected roles and moved to the **Operation** step, choose one of five operation types from the tab group.
 
+> **Attribute names** — The `attribute.` prefix is optional for IDENTITY attributes in all operation forms. You can type `cloudLifecycleState` or `attribute.cloudLifecycleState`; both are treated identically.
+
 ### Update value
 
 Replace an old criteria value with one or more new values across every matching leaf for that attribute.
@@ -116,7 +119,7 @@ Merge sibling OR leaves for the same attribute into a single multi-value leaf (s
 
 ## 4. Simulate — estimate impact before committing
 
-Click **Simulate** in the Operation step to run a dry evaluation against all selected roles — no writes. The simulation card shows how many roles would change and how many would be skipped (with skip reasons).
+Click **Simulate** in the Operation step to run a dry evaluation against your **currently selected** roles — no writes. The button label shows the exact count (*Simulate (N roles)*) so you always know what scope you're evaluating. The simulation card shows how many roles would change and how many would be skipped (with skip reasons).
 
 ![Simulate results](media/13-simulate-results.png)
 
@@ -126,7 +129,7 @@ Click **Simulate** in the Operation step to run a dry evaluation against all sel
 
 Click **Preview** to move to the Preview step. For each selected role:
 - A **side-by-side criteria tree** (Current vs. Proposed) shows exactly what will change.
-- **Identity counts** (fetched from the ISC Search API) show how many identities match before and after.
+- **Identity counts** (fetched from the ISC Search API) show how many identities match before and after, using corrected `attributes.<name>` prefix and operation-aware Elasticsearch terms for accurate counts on custom attributes.
 
 ![Preview — criteria tree](media/14-preview-criteria-tree.png)
 ![Preview — identity counts](media/15-preview-identity-counts.png)
@@ -154,6 +157,15 @@ The Results step shows per-role status (`Updated` / `Skipped` / `Error`) with li
 
 ![Apply results](media/18-apply-results.png)
 
+### Start Over vs Run again
+
+The Results step has two reset buttons with different scopes:
+
+| Button | What it resets |
+|---|---|
+| **Run again** | Clears the Preview and Results and jumps back to the **Operation** step. Your target roles stay selected — useful to tweak the operation and re-run. |
+| **Start Over** | Full reset of all four steps (Target, Operation, Preview, Results). Use this to begin a completely new workflow. |
+
 ---
 
 ## 7. Restore from Snapshot
@@ -168,3 +180,26 @@ Confirm and execute the restore — the roles are patched back to their snapshot
 
 > **Apply + Restore GIF** — full flow from ready-to-execute through sandbox cleanup
 > ![apply-restore](media/apply-restore.gif)
+
+---
+
+## 8. PowerShell scripts
+
+The companion PowerShell scripts (`Invoke-ISCRoleCriteriaManager.ps1` and `ISC-Update-Roles-Criteria.ps1`) provide full feature parity in a headless terminal. See the [README](../README.md#powershell-scripts) for the complete reference.
+
+**Key behaviors:**
+
+- **Tenant URL normalization** — supply either form; the script inserts `.api.` if absent:
+  ```
+  https://acme.identitynow.com  →  https://acme.api.identitynow.com
+  ```
+- **Bare attribute names** — the `attribute.` prefix is optional everywhere (`cloudLifecycleState` and `attribute.cloudLifecycleState` are equivalent).
+- **Identity-impact preview** — before/after identity match counts using corrected `attributes.<name>` prefix and operation-aware Elasticsearch terms.
+- **PowerShell 4.0+ / TLS 1.2** — compatible with Windows PowerShell 4.0 and later; TLS 1.2 is enabled automatically.
+- **`-WhatIf`** — dry-run flag; previews all changes with no API writes.
+
+**PowerShell walkthrough — Target → Operation → Preview → `WhatIf`**
+
+*Illustrative walkthrough of the script's four-step flow with placeholder sandbox data.*
+
+![PowerShell walkthrough](media/ps-walkthrough.gif)

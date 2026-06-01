@@ -1,33 +1,33 @@
 {
   "auth-flow": [
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/00-connect-screen.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/01-dashboard-connected.png"
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/00-connect-screen.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/01-dashboard-connected.png"
   ],
   "target-modes": [
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/02-target-single-mode.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/03-target-single-filled.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/04-target-bulk-mode.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/05-target-criteria-mode.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/06-target-access-profile-mode.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/07-target-bulk-results-table.png"
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/02-target-single-mode.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/03-target-single-filled.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/04-target-bulk-mode.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/05-target-criteria-mode.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/06-target-access-profile-mode.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/07-target-bulk-results-table.png"
   ],
   "operations": [
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/08-operation-update.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/09-operation-add-values.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/10-operation-add-block.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/11-operation-remove.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/12-operation-consolidate.png"
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/08-operation-update.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/09-operation-add-values.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/10-operation-add-block.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/11-operation-remove.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/12-operation-consolidate.png"
   ],
   "preview-simulate": [
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/13-simulate-results.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/14-preview-criteria-tree.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/15-preview-identity-counts.png"
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/13-simulate-results.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/14-preview-criteria-tree.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/15-preview-identity-counts.png"
   ],
   "apply-restore": [
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/16-preview-ready-to-execute.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/17-apply-confirm-dialog.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/18-apply-results.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/19-restore-preview.png",
-    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-recapture-neutral/docs/media/21-restore-complete.png"
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/16-preview-ready-to-execute.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/17-apply-confirm-dialog.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/18-apply-results.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/19-restore-preview.png",
+    "/Users/ryanwillen/.atmux/agents/isc-role-criteria-manager-docs-media-refresh/docs/media/21-restore-complete.png"
   ]
 }
