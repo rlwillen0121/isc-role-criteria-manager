@@ -21,10 +21,6 @@ import {
 // Initialize CSRF tokens
 const tokens = new Tokens();
 
-// In-memory token storage for session-based approach
-let tokenData: TokenData | null = null;
-
-
 /**
  * Initiate OAuth web login flow
  */
@@ -103,7 +99,7 @@ export const oauthCallback = async (req: Request, res: Response): Promise<void> 
     const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
     // Store token information
-    tokenData = {
+    const tokenData: TokenData = {
       accessToken: access_token,
       accessExpiry: new Date(Date.now() + expires_in * 1000),
       refreshToken: refresh_token,
@@ -188,11 +184,7 @@ export const accessTokenStatus = async (req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Get token data from storage
-  if (!tokenData && req.sessionId) {
-    tokenData = await storage.getTokenData(req.sessionId);
-  }
-
+  const tokenData = req.sessionId ? await storage.getTokenData(req.sessionId) : null;
   if (!tokenData) {
     const response: TokenStatusResponse = {
       authtype: 'oauth' as const,
@@ -232,7 +224,7 @@ export const accessTokenStatus = async (req: Request, res: Response): Promise<vo
       const { access_token, refresh_token, expires_in } = refreshResponse.data;
 
       // Update token data with new tokens
-      tokenData = {
+      const refreshedTokenData: TokenData = {
         accessToken: access_token,
         accessExpiry: new Date(Date.now() + expires_in * 1000),
         refreshToken: refresh_token || tokenData.refreshToken,
@@ -241,7 +233,7 @@ export const accessTokenStatus = async (req: Request, res: Response): Promise<vo
 
       // Update storage
       if (req.sessionId) {
-        await storage.setTokenData(req.sessionId, tokenData);
+        await storage.setTokenData(req.sessionId, refreshedTokenData);
       }
 
       // Parse JWT to update user info if needed
@@ -257,6 +249,10 @@ export const accessTokenStatus = async (req: Request, res: Response): Promise<vo
       }
 
       accessTokenIsValid = true;
+      tokenData.accessToken = refreshedTokenData.accessToken;
+      tokenData.accessExpiry = refreshedTokenData.accessExpiry;
+      tokenData.refreshToken = refreshedTokenData.refreshToken;
+      tokenData.refreshExpiry = refreshedTokenData.refreshExpiry;
       console.log('Token refreshed successfully');
     } catch (refreshError) {
       console.error('Failed to refresh token:', refreshError);
@@ -279,7 +275,6 @@ export const accessTokenStatus = async (req: Request, res: Response): Promise<vo
  */
 export const logout = async (req: Request, res: Response): Promise<void> => {
   // Clear token data, CSRF secret, and session auth from memory and storage
-  tokenData = null;
   if (req.sessionId) {
     await storage.deleteTokenData(req.sessionId);
     await storage.deleteCsrfSecret(req.sessionId);
@@ -313,10 +308,4 @@ export const csrfToken = async (req: Request, res: Response): Promise<void> => {
   };
 
   res.json(response);
-};
-
-// Export token data getter for SDK controller
-export const getTokenData = (): TokenData | null => tokenData;
-export const setTokenData = (data: TokenData | null): void => {
-  tokenData = data;
 };

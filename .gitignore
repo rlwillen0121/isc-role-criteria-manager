@@ -18,6 +18,7 @@ app-builds/
 !.env.example
 *.pem
 *.key
+role-criteria-snapshot-*.json
 
 # Editor
 .vscode/*
