@@ -200,4 +200,6 @@ The companion PowerShell scripts (`Invoke-ISCRoleCriteriaManager.ps1` and `ISC-U
 
 **PowerShell walkthrough — Target → Operation → Preview → `WhatIf`**
 
+*Illustrative walkthrough of the script's four-step flow with placeholder sandbox data.*
+
 ![PowerShell walkthrough](media/ps-walkthrough.gif)

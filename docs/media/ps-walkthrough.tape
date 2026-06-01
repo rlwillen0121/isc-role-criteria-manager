@@ -1,7 +1,7 @@
 # VHS tape — records the PowerShell walkthrough demo GIF.
-# Uses ps-walkthrough-demo.ps1 (sandbox placeholder data, no real API calls).
+# Uses docs/media/ps-walkthrough-demo.ps1 (sandbox placeholder data, no real API calls).
 # Run from the repo root:
-#   vhs scripts/ps-walkthrough.tape
+#   vhs docs/media/ps-walkthrough.tape
 
 Output docs/media/ps-walkthrough.gif
 
@@ -12,7 +12,7 @@ Set Height 600
 Set PlaybackSpeed 1
 
 # ── Launch the demo ──────────────────────────────────────────────────────────
-Type "pwsh scripts/ps-walkthrough-demo.ps1 -WhatIf"
+Type "pwsh docs/media/ps-walkthrough-demo.ps1 -WhatIf"
 Enter
 Sleep 400ms
 

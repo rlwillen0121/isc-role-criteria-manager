@@ -117,6 +117,8 @@ If you prefer zero third-party involvement, use PAT auth instead.
 
 **PowerShell walkthrough — Target → Operation → Preview → `WhatIf`**
 
+*Illustrative walkthrough of the script's four-step flow with placeholder sandbox data.*
+
 ![PowerShell walkthrough](docs/media/ps-walkthrough.gif)
 
 ---
