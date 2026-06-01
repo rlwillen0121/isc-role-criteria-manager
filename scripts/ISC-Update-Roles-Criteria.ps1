@@ -339,14 +339,12 @@ function Update-CriteriaIfOldMatch {
                 if ($newVals.Count -eq 1) {
                     $node.stringValue = $newVals[0]
                     if ($node.PSObject.Properties["values"]) {
-                        # PS 5.1-safe property removal via round-trip
-                        $node = $node | Select-Object -ExcludeProperty values
+                        $node.PSObject.Properties.Remove("values")
                     }
                 } else {
                     $node.values = $newVals
                     if ($node.PSObject.Properties["stringValue"]) {
-                        # PS 5.1-safe property removal via round-trip
-                        $node = $node | Select-Object -ExcludeProperty stringValue
+                        $node.PSObject.Properties.Remove("stringValue")
                     }
                 }
             }
@@ -380,8 +378,7 @@ function Add-ValuesToExistingNode {
                 $existing = @($node.values)
             } elseif ($node.PSObject.Properties["stringValue"] -and -not [string]::IsNullOrWhiteSpace($node.stringValue)) {
                 $existing = @($node.stringValue)
-                # PS 5.1-safe property removal via round-trip
-                $node = $node | Select-Object -ExcludeProperty stringValue
+                $node.PSObject.Properties.Remove("stringValue")
                 Write-Host "  Converting stringValue to values[] on $attribute" -ForegroundColor DarkGray
             }
 
@@ -488,8 +485,7 @@ function Remove-CriteriaByValue {
                 $match = $true
             } elseif ($remaining.Count -eq 1) {
                 Write-Host "  Removed value '$valueToRemove'. One value remaining, converting to stringValue."
-                # PS 5.1-safe property removal via round-trip
-                $node = $node | Select-Object -ExcludeProperty values
+                $node.PSObject.Properties.Remove("values")
                 $node | Add-Member -MemberType NoteProperty -Name "stringValue" -Value $remaining[0] -Force
                 return $node
             } else {
@@ -735,8 +731,14 @@ foreach ($role in $allRoles) {
         Write-Host "  Warning: could not snapshot role '$($role.name)': $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
-$snapshot | ConvertTo-Json -Depth 20 | Out-File -FilePath $snapshotFile -Encoding UTF8
-Write-Host "Snapshot saved: $snapshotFile" -ForegroundColor Green
+$snapshotWritten = $false
+if ($PSCmdlet.ShouldProcess($snapshotFile, "write pre-run snapshot")) {
+    $snapshot | ConvertTo-Json -Depth 20 | Out-File -FilePath $snapshotFile -Encoding UTF8
+    $snapshotWritten = $true
+    Write-Host "Snapshot saved: $snapshotFile" -ForegroundColor Green
+} else {
+    Write-Host "[WhatIf] Snapshot not written: $snapshotFile" -ForegroundColor DarkCyan
+}
 
 # =============================================================================
 # MAIN LOOP
@@ -1014,5 +1016,9 @@ foreach ($role in $allRoles) {
 Write-Host "`n=============================================" -ForegroundColor Cyan
 Write-Host "Run complete. Results:" -ForegroundColor Cyan
 $results | Format-Table -AutoSize
-Write-Host "Pre-run snapshot: $snapshotFile" -ForegroundColor Cyan
+if ($snapshotWritten) {
+    Write-Host "Pre-run snapshot: $snapshotFile" -ForegroundColor Cyan
+} else {
+    Write-Host "Pre-run snapshot: not written due to -WhatIf ($snapshotFile)" -ForegroundColor Cyan
+}
 Write-Host "=============================================" -ForegroundColor Cyan

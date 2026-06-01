@@ -264,7 +264,7 @@ test('doc-capture: all major flows', async () => {
     // Mock dialog.showSaveDialog so the IPC save-file handler writes the
     // snapshot to a fixed temp path without showing a native OS dialog.
     await app.evaluate(({ dialog }) => {
-      dialog.showSaveDialog = async () => ({
+      dialog.showSaveDialog = () => Promise.resolve({
         canceled: false,
         filePath: '/tmp/doc-capture-snapshot.json',
       });
@@ -314,7 +314,7 @@ test('doc-capture: all major flows', async () => {
       // Mock dialog.showOpenDialog to return the snapshot path saved above.
       // The IPC browse-for-json-file handler reads the file at that path.
       await app.evaluate(({ dialog }) => {
-        dialog.showOpenDialog = async () => ({
+        dialog.showOpenDialog = () => Promise.resolve({
           canceled: false,
           filePaths: ['/tmp/doc-capture-snapshot.json'],
         });

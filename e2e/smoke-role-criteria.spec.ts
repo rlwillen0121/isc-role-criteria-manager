@@ -73,7 +73,7 @@ test.describe('Role Criteria Manager smoke (dry-run)', () => {
     await searchInput.fill(ROLE_FILTER);
     await win.getByRole('button', { name: /Find Roles/i }).click();
 
-    const resultCount = win.locator('.result-count');
+    const resultCount = win.getByText(/\d+ role\(s\) found/).first();
     const emptyState  = win.getByText('No roles matched your search.');
     const snackBar    = win.locator('mat-snack-bar-container');
 
@@ -100,8 +100,11 @@ test.describe('Role Criteria Manager smoke (dry-run)', () => {
     console.log('Roles found:', countText);
     expect(countText).toMatch(/\d+ role\(s\) found/);
 
-    // ── 4. Select first role (bulk mode leaves all unchecked by default) ────
-    await win.locator('table.role-table mat-checkbox').first().click();
+    // ── 4. Ensure at least one role is selected ─────────────────────────────
+    const selectedText = (await resultCount.textContent()) ?? '';
+    if (selectedText.includes('0 selected')) {
+      await win.getByRole('button', { name: /Select All \d+/i }).click();
+    }
 
     // ── 5. Advance to Operation step ────────────────────────────────────────
     await win.getByRole('button', { name: /^Next$/i }).click();

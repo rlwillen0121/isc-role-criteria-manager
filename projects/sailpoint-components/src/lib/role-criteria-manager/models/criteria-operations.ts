@@ -503,7 +503,7 @@ export function restoreFromSnapshot(
   return {
     status: 'ready',
     tree: newTree,
-    patch: buildMembershipPatch(newTree, snapshot.membership as MembershipSelector, hadCriteria),
+    patch: buildMembershipPatch(newTree, snapshot.membership, hadCriteria),
     changed: true,
   };
 }

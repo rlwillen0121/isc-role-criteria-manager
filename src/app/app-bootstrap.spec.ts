@@ -17,8 +17,9 @@
  * externalised to `require`. If anyone flips the target back to
  * 'electron-renderer' (or any 'node'/'electron-*' target), this fails.
  */
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const customWebpack = require('../../angular.webpack.js') as (
+import customWebpackModule from '../../angular.webpack.js';
+
+const customWebpack = customWebpackModule as (
   config: { target?: string; plugins: unknown[] },
   options: Record<string, unknown>
 ) => { target?: string; plugins: unknown[] };

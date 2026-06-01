@@ -1,4 +1,4 @@
-import { _electron as electron, ElectronApplication, Page } from 'playwright';
+import { _electron as electron, Page } from 'playwright';
 import { test, expect } from '@playwright/test';
 import * as PATH from 'path';
 import * as fs from 'fs';
@@ -105,8 +105,9 @@ test('full devrel smoke — UI + API features', async () => {
   await win.locator('input[placeholder="e.g. DL - Engineering"]').fill('ACME');
   await win.getByRole('button', { name: /Find Roles/i }).click();
 
+  const resultCount = win.getByText(/\d+ role\(s\) found/).first();
   const searchResult = await Promise.race([
-    win.locator('.result-count-row').waitFor({ timeout: 30000 }).then(() => 'ok'),
+    resultCount.waitFor({ timeout: 30000 }).then(() => 'ok'),
     win.locator('mat-snack-bar-container').waitFor({ timeout: 30000 }).then(() => 'error'),
   ]).catch(() => 'timeout');
 
@@ -117,7 +118,7 @@ test('full devrel smoke — UI + API features', async () => {
     console.log(`⚠️  Search failed (${searchResult}): ${msg?.trim()}`);
     console.log('   → Skipping API-dependent assertions; showing UI-only screenshots');
   } else {
-    const roleCount = (await win.locator('.result-count-row').textContent())?.trim();
+    const roleCount = (await resultCount.textContent())?.trim();
     console.log('✅ Search result:', roleCount);
 
     // Ensure at least one role is selected — bulk search auto-selects all ≤50,

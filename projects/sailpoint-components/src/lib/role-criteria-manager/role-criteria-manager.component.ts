@@ -465,7 +465,7 @@ export class RoleCriteriaManagerComponent {
         offset,
       });
       if (resp?.status !== undefined && resp.status >= 400) {
-        throw resp;
+        throw new Error(`Failed to list roles: HTTP ${resp.status}`);
       }
       const page = Array.isArray(resp?.data) ? resp.data : [];
       if (page.length === 0) {

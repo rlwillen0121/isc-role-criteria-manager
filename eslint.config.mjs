@@ -37,6 +37,7 @@ export default [
       },
       parserOptions: {
         project: [
+          './tsconfig.eslint.json',
           './tsconfig.serve.json',
           './src/tsconfig.app.json',
           './src/tsconfig.spec.json',
