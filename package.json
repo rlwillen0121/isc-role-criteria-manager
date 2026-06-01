@@ -1,6 +1,6 @@
 {
   "name": "isc-role-criteria-manager",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Community tool for bulk-managing SailPoint ISC role membership criteria",
   "homepage": "https://github.com/rlwillen0121/isc-role-criteria-manager",
   "author": {
