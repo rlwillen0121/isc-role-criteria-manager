@@ -6,10 +6,10 @@ This document describes the architecture of the built application.
 
 ## Stack
 
-- **Framework**: [SailPoint UI Development Kit](https://github.com/sailpoint-oss/ui-development-kit) (Angular 19 + Electron)
+- **Framework**: [SailPoint UI Development Kit](https://github.com/sailpoint-oss/ui-development-kit) (Angular 21 + Electron)
 - **UI components**: Angular Material (`mat-stepper`, `mat-table`, `mat-tabs`, `mat-tree`, `mat-autocomplete`)
-- **ISC SDK**: `sailpoint-api-client` (pre-wired in the UI Dev Kit)
-- **Auth**: OAuth2 (browser flow) or PAT — handled by the kit's built-in environment manager
+- **ISC SDK**: `sailpoint-api-client`
+- **Auth**: OAuth2 (SailPoint-operated Lambda broker + PKCE flow) or PAT — tokens stored in the OS keychain via Electron `safeStorage`; all calls bridge through Electron IPC (`SailPointSDKService`)
 - **Distribution**: Cross-platform Electron builds via `electron-builder`
 
 ---
