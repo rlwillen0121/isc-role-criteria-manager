@@ -17,14 +17,16 @@
    ```
 
 4. The **Release** GitHub Actions workflow triggers on the `v*` tag and builds
-   unsigned installers on Ubuntu, Windows, and macOS. When all three jobs pass,
-   three artifacts are attached to the GitHub Release that GitHub creates from
-   the tag:
-   - `*.AppImage` — Linux
-   - `*.exe` — Windows (portable, no installer)
-   - `*.dmg` — macOS
+   unsigned installers on Ubuntu, Windows, and macOS using
+   `electron-builder build --publish never` (electron-builder handles the
+   local build only; `softprops/action-gh-release` creates the GitHub Release
+   and uploads all artifacts). When all three jobs pass, six files are attached:
+   - `*.AppImage` + `*.AppImage.sha256` — Linux
+   - `*.exe` + `*.exe.sha256` — Windows (portable, no installer)
+   - `*.dmg` + `*.dmg.sha256` — macOS
 
-5. Open the draft release on GitHub, add release notes, and publish it.
+5. The workflow creates and publishes the release automatically. Open it on
+   GitHub to add or update release notes.
 
 ---
 

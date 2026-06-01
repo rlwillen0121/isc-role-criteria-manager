@@ -16,6 +16,41 @@ Two ways to use it — pick what fits your workflow:
 
 ---
 
+## Download & Install
+
+> **Prebuilt binaries are available — no Node.js or build toolchain required.**
+
+Download the latest release for your platform:
+
+**[→ GitHub Releases](https://github.com/rlwillen0121/isc-role-criteria-manager/releases)**
+
+| Platform | File | Notes |
+|---|---|---|
+| macOS | `*.dmg` | Apple Silicon (arm64) |
+| Windows | `*.exe` | x64 portable — no installer |
+| Linux | `*.AppImage` | x64 |
+
+Each binary is accompanied by a `.sha256` checksum file. Verify before running:
+
+```bash
+# macOS / Linux
+sha256sum -c ISC-Role-Criteria-Manager-*.sha256
+
+# Windows (PowerShell)
+Get-FileHash .\ISC-Role-Criteria-Manager-*.exe -Algorithm SHA256
+# compare the hash to the value in the matching .sha256 file
+```
+
+These builds are **unsigned**. Your OS will show a security prompt on first launch:
+
+- **macOS (Gatekeeper):** After mounting the DMG and dragging the app to `/Applications`, right-click the app → **Open** → click **Open** in the dialog. Alternatively: **System Settings → Privacy & Security → Open Anyway**.
+- **Windows (SmartScreen):** Click **More info** → **Run anyway**.
+- **Linux:** `chmod +x ISC-Role-Criteria-Manager-*.AppImage && ./ISC-Role-Criteria-Manager-*.AppImage`
+
+> Full per-platform details and future code-signing notes: **[RELEASES.md](RELEASES.md)**
+
+---
+
 ## Before you run: safety checklist
 
 This tool writes bulk `PATCH` operations to a live ISC tenant. The following built-in rails exist to protect you — **use them**:
@@ -31,7 +66,7 @@ This tool writes bulk `PATCH` operations to a live ISC tenant. The following bui
 
 ## Electron app
 
-### Quick start
+### Build from source / dev setup
 
 ```bash
 git clone https://github.com/rlwillen0121/isc-role-criteria-manager.git
