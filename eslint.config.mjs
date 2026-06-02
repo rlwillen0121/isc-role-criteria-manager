@@ -16,6 +16,7 @@ export default [
       'src/environments/*',
       'src/zone-testing-setup.ts',
       'e2e/playwright.config.ts',
+      'e2e/devrel-live/**',
       'projects/sailpoint-components/src/lib/sailpoint-sdk.service.ts',
       'node_modules/**'
     ]

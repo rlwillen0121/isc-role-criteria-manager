@@ -65,6 +65,8 @@ src/**/*.js
 /e2e/*.map
 /e2e/tracing
 /e2e/screenshots
+/e2e/evidence
+/e2e/devrel-live/
 
 # Misc
 /connect.lock
