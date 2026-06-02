@@ -12,18 +12,18 @@
 #   - Per-role result summary
 #
 # USAGE:
-#   # Option 1 — OAuth2 client credentials (fully automatic, no token paste needed)
+#   # Option 1 - OAuth2 client credentials (fully automatic, no token paste needed)
 #   $env:ISC_TENANT_URL    = "https://acme.api.identitynow.com"
 #   $env:ISC_CLIENT_ID     = "your-client-id"
 #   $env:ISC_CLIENT_SECRET = "your-client-secret"
 #   ./ISC-bulk-update-role-criteria.ps1
 #
-#   # Option 2 — pre-acquired bearer token via env var
+#   # Option 2 - pre-acquired bearer token via env var
 #   $env:ISC_TENANT_URL   = "https://acme.api.identitynow.com"
 #   $env:ISC_BEARER_TOKEN = "<your-token>"
 #   ./ISC-bulk-update-role-criteria.ps1
 #
-#   # Option 3 — interactive (prompts for URL then token paste)
+#   # Option 3 - interactive (prompts for URL then token paste)
 #   ./ISC-bulk-update-role-criteria.ps1
 #
 #   # Dry run (previews changes, no API writes)
@@ -34,11 +34,11 @@
 
 [CmdletBinding(SupportsShouldProcess)]
 param (
-    # ISC tenant base URL — e.g. https://acme.api.identitynow.com
+    # ISC tenant base URL - e.g. https://acme.api.identitynow.com
     # Required. Set via ISC_TENANT_URL env var or pass -TenantUrl directly.
     [string]$TenantUrl    = $env:ISC_TENANT_URL,
 
-    # OAuth2 client credentials — if both are set, a token is fetched automatically.
+    # OAuth2 client credentials - if both are set, a token is fetched automatically.
     # Set via ISC_CLIENT_ID / ISC_CLIENT_SECRET env vars or pass as params.
     [string]$ClientId     = $env:ISC_CLIENT_ID,
     [string]$ClientSecret = $env:ISC_CLIENT_SECRET,
@@ -48,14 +48,14 @@ param (
     [string]$BearerToken  = $env:ISC_BEARER_TOKEN
 )
 
-# TLS 1.2 — required for SailPoint ISC; default on PS4/Win8.1 is TLS 1.0/1.1
+# TLS 1.2 - required for SailPoint ISC; default on PS4/Win8.1 is TLS 1.0/1.1
 try {
     $tls12 = [Net.SecurityProtocolType]::Tls12
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $tls12
 } catch { }
 
 # =============================================================================
-# CONFIGURATION — TENANT URL
+# CONFIGURATION - TENANT URL
 # Required. Set $env:ISC_TENANT_URL before running, or pass -TenantUrl.
 # =============================================================================
 if ([string]::IsNullOrWhiteSpace($TenantUrl)) {
@@ -84,9 +84,9 @@ $baseUrl = $TenantUrl.TrimEnd('/')
 # =============================================================================
 # TOKEN ACQUISITION
 # Priority order:
-#   1. OAuth2 client credentials (ISC_CLIENT_ID + ISC_CLIENT_SECRET) — automatic
-#   2. Bearer token param / ISC_BEARER_TOKEN env var — direct paste/supply
-#   3. Interactive paste — fallback
+#   1. OAuth2 client credentials (ISC_CLIENT_ID + ISC_CLIENT_SECRET) - automatic
+#   2. Bearer token param / ISC_BEARER_TOKEN env var - direct paste/supply
+#   3. Interactive paste - fallback
 # =============================================================================
 if (-not [string]::IsNullOrWhiteSpace($ClientId) -and -not [string]::IsNullOrWhiteSpace($ClientSecret)) {
     Write-Host "Acquiring token via OAuth2 client credentials..." -ForegroundColor Cyan
@@ -135,19 +135,19 @@ try {
         Write-Host "  URL org   : $urlOrg   ($baseUrl)" -ForegroundColor Red
         Write-Host ""
         Write-Host "  You need a token from '$urlOrg', not '$jwtOrg'." -ForegroundColor Yellow
-        Write-Host "  In the ISC UI go to: Admin → Connections → OAuth Applications → your client → Generate Token" -ForegroundColor Yellow
+        Write-Host "  In the ISC UI go to: Admin -> Connections -> OAuth Applications -> your client -> Generate Token" -ForegroundColor Yellow
         Write-Host "  Make sure you are logged into the correct tenant first." -ForegroundColor Yellow
         Write-Host ""
         exit 1
     }
     Write-Host "Token org verified: $jwtOrg matches $urlOrg" -ForegroundColor Green
 } catch {
-    # JWT parse failure is non-fatal — proceed, real errors will surface on first API call
-    Write-Host "  (Could not decode JWT to verify org — proceeding)" -ForegroundColor DarkGray
+    # JWT parse failure is non-fatal - proceed, real errors will surface on first API call
+    Write-Host "  (Could not decode JWT to verify org - proceeding)" -ForegroundColor DarkGray
 }
 
 # =============================================================================
-# SPLIT HEADERS — GET vs PATCH
+# SPLIT HEADERS - GET vs PATCH
 # =============================================================================
 $getHeaders = @{
     Authorization = "Bearer $tokenPlain"
@@ -167,13 +167,13 @@ Write-Host "`nWhat would you like to do?"
 Write-Host "  [U] Update existing criteria value"
 Write-Host "      Finds a criteria leaf whose stringValue or values[] contains ONE specific"
 Write-Host "      old value and replaces it. Enter a single value for OLD (not comma-separated)."
-Write-Host "      To DROP one value from a multi-value node, use [R] → Remove specific value."
+Write-Host "      To DROP one value from a multi-value node, use [R] -> Remove specific value."
 Write-Host "  [V] Add value(s) to an existing criteria node"
-Write-Host "      Appends one or more values to an existing leaf node (stringValue → values[])."
-Write-Host "      Use this to extend e.g. [active, loa] → [active, loa, terminated]."
+Write-Host "      Appends one or more values to an existing leaf node (stringValue -> values[])."
+Write-Host "      Use this to extend e.g. [active, loa] -> [active, loa, terminated]."
 Write-Host "  [A] Add new criteria block"
 Write-Host "  [R] Remove criteria (specific value or entire attribute)"
-Write-Host "  [C] Consolidate — merge multiple sibling OR nodes for the same attribute"
+Write-Host "  [C] Consolidate - merge multiple sibling OR nodes for the same attribute"
 Write-Host "      into a single node with a values[] list."
 Write-Host "      Example: 4 separate (Lifecycle State EQUALS active/loa/conversions/partnerExceptions)"
 Write-Host "               -> 1 node with values: [active, loa, conversions, partnerExceptions]"
@@ -359,7 +359,7 @@ function Update-CriteriaIfOldMatch {
 }
 
 # Walks the criteria tree and appends $newVals to the first leaf matching
-# $attribute. Converts stringValue → values[] if needed. Deduplicates.
+# $attribute. Converts stringValue -> values[] if needed. Deduplicates.
 function Add-ValuesToExistingNode {
     param (
         [psobject]$node,
@@ -388,7 +388,7 @@ function Add-ValuesToExistingNode {
                     $existing += $v
                     $added    += $v
                 } else {
-                    Write-Host "  Skipping '$v' — already present on $attribute" -ForegroundColor Yellow
+                    Write-Host "  Skipping '$v' - already present on $attribute" -ForegroundColor Yellow
                 }
             }
 
@@ -591,7 +591,7 @@ function Consolidate-SiblingNodes {
         [ref]$matched
     )
 
-    # Leaf node — nothing to consolidate at this level
+    # Leaf node - nothing to consolidate at this level
     if (-not ($node.PSObject.Properties["children"]) -or $null -eq $node.children) {
         return $node
     }
@@ -660,7 +660,7 @@ function Consolidate-SiblingNodes {
     $newChildren = @($consolidatedLeaf) + $remainingChildren
 
     if ($newChildren.Count -eq 1) {
-        Write-Host "  OR parent now has only 1 child after consolidation — collapsing parent." -ForegroundColor DarkGray
+        Write-Host "  OR parent now has only 1 child after consolidation - collapsing parent." -ForegroundColor DarkGray
         return $newChildren[0]
     }
 
@@ -693,7 +693,7 @@ if ($allRoles.Count -eq 0) {
 }
 
 # =============================================================================
-# SAFETY: Single-role mode — clamp to first result only
+# SAFETY: Single-role mode - clamp to first result only
 # ISC name eq filters are exact-match but this guard ensures that even if the
 # API unexpectedly returns more than one result (e.g. duplicate names in the
 # tenant), we never silently process more than the one role the user named.
@@ -702,7 +702,7 @@ if ($mode -eq "S" -and $allRoles.Count -gt 1) {
     Write-Host ""
     Write-Host "  *** SAFETY WARNING ***" -ForegroundColor Yellow
     Write-Host "  Single-role mode returned $($allRoles.Count) roles for name '$roleName'." -ForegroundColor Yellow
-    Write-Host "  This should not happen — ISC role names are meant to be unique." -ForegroundColor Yellow
+    Write-Host "  This should not happen - ISC role names are meant to be unique." -ForegroundColor Yellow
     Write-Host "  Only the FIRST result will be processed as a safety measure:" -ForegroundColor Yellow
     Write-Host "    ID  : $($allRoles[0].id)" -ForegroundColor Yellow
     Write-Host "    Name: $($allRoles[0].name)" -ForegroundColor Yellow
@@ -974,7 +974,7 @@ foreach ($role in $allRoles) {
         continue
     }
 
-    # Serialize as a JSON Patch array — works on PS 5.1 and PS 7+.
+    # Serialize as a JSON Patch array - works on PS 5.1 and PS 7+.
     $patchBody = "[" + ($patchOperations | ConvertTo-Json -Depth 15 -Compress) + "]"
 
     if ($PSCmdlet.ShouldProcess($roleName, "PATCH /v3/roles/$roleId")) {
