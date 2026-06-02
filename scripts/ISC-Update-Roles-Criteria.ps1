@@ -161,6 +161,61 @@ $patchHeaders = @{
 }
 
 # =============================================================================
+# API CALL WRAPPER - retry with backoff on HTTP 429 (rate limit) / 503
+# Honors the Retry-After response header when present; otherwise uses
+# exponential backoff with jitter. Compatible with Windows PowerShell 5.1
+# and PowerShell 7+. Non-retryable errors (and exhausted retries) rethrow so
+# existing try/catch blocks still surface them.
+# =============================================================================
+function Invoke-IscApi {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [string]$Method = 'GET',
+        [hashtable]$Headers,
+        $Body,
+        [string]$ContentType,
+        [int]$MaxAttempts = 5
+    )
+
+    $attempt = 0
+    while ($true) {
+        $attempt++
+        try {
+            $params = @{ Uri = $Uri; Method = $Method }
+            if ($Headers)        { $params.Headers     = $Headers }
+            if ($null -ne $Body) { $params.Body        = $Body }
+            if ($ContentType)    { $params.ContentType = $ContentType }
+            return Invoke-RestMethod @params
+        } catch {
+            $status     = $null
+            $retryAfter = $null
+            $resp       = $_.Exception.Response
+            if ($resp) {
+                try { $status = [int]$resp.StatusCode } catch {}
+                try {
+                    # PS 5.1 HttpWebResponse.Headers is a NameValueCollection
+                    $ra = $resp.Headers['Retry-After']
+                    if ($ra) { $retryAfter = [int]$ra }
+                } catch {}
+            }
+
+            $retryable = ($status -eq 429 -or $status -eq 503)
+            if (-not $retryable -or $attempt -ge $MaxAttempts) { throw }
+
+            if ($retryAfter -and $retryAfter -gt 0) {
+                $delay = [double]$retryAfter
+            } else {
+                # exponential backoff: 2,4,8,16s capped at 30s, plus <1s jitter
+                $delay = [Math]::Min([Math]::Pow(2, $attempt), 30)
+                $delay = $delay + (Get-Random -Minimum 0 -Maximum 1000) / 1000.0
+            }
+            Write-Host "  Rate limited (HTTP $status) - retrying in $([Math]::Round($delay,1))s (attempt $attempt/$MaxAttempts)" -ForegroundColor DarkYellow
+            Start-Sleep -Milliseconds ([int]($delay * 1000))
+        }
+    }
+}
+
+# =============================================================================
 # OPERATION MODE
 # =============================================================================
 Write-Host "`nWhat would you like to do?"
@@ -677,7 +732,7 @@ $pageSize = 250
 $offset   = 0
 
 do {
-    $page = Invoke-RestMethod `
+    $page = Invoke-IscApi `
         -Uri     "$baseUrl/v3/roles?limit=$pageSize&offset=$offset&filters=$filter" `
         -Headers $getHeaders `
         -Method  GET
@@ -721,7 +776,7 @@ Write-Host "`nTaking pre-run snapshot -> $snapshotFile" -ForegroundColor Cyan
 $snapshot = @()
 foreach ($role in $allRoles) {
     try {
-        $rd = Invoke-RestMethod -Uri "$baseUrl/v3/roles/$($role.id)" -Headers $getHeaders -Method GET
+        $rd = Invoke-IscApi -Uri "$baseUrl/v3/roles/$($role.id)" -Headers $getHeaders -Method GET
         $snapshot += [pscustomobject]@{
             id         = $rd.id
             name       = $rd.name
@@ -754,7 +809,7 @@ foreach ($role in $allRoles) {
 
     $patchOperations = $null
 
-    $roleDetails = Invoke-RestMethod -Uri $roleUrl -Headers $getHeaders -Method GET
+    $roleDetails = Invoke-IscApi -Uri $roleUrl -Headers $getHeaders -Method GET
 
     # ------------------------------------------------------------------
     # OPERATION: UPDATE existing criteria value
@@ -979,7 +1034,7 @@ foreach ($role in $allRoles) {
 
     if ($PSCmdlet.ShouldProcess($roleName, "PATCH /v3/roles/$roleId")) {
         try {
-            Invoke-RestMethod -Uri $roleUrl -Method Patch -Headers $patchHeaders -Body $patchBody | Out-Null
+            Invoke-IscApi -Uri $roleUrl -Method Patch -Headers $patchHeaders -Body $patchBody | Out-Null
             Write-Host "  Role '$roleName' updated successfully." -ForegroundColor Green
             $results += [pscustomobject]@{ Role = $roleName; Status = "Updated" }
         } catch {
