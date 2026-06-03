@@ -8,7 +8,7 @@ A community tool for bulk-managing SailPoint Identity Security Cloud (ISC) role 
 
 Two ways to use it — pick what fits your workflow:
 
-| | Electron app | PowerShell scripts |
+| | Electron app | PowerShell script |
 |---|---|---|
 | **Requires** | Node 20+, npm | PowerShell 4.0+ |
 | **Auth** | OAuth2 or PAT (via system keychain) | OAuth2 client credentials or bearer token |
@@ -158,9 +158,9 @@ If you prefer zero third-party involvement, use PAT auth instead.
 
 ---
 
-## PowerShell scripts
+## PowerShell script
 
-Both scripts share the same authentication model:
+Authentication model:
 
 ```powershell
 # OAuth2 client credentials (automatic token fetch)
@@ -175,7 +175,7 @@ $env:ISC_BEARER_TOKEN = "<your-token>"
 # — or — leave unset and paste interactively when prompted
 ```
 
-**Tenant URL** — either form is accepted. If you supply the base URL (`https://acme.identitynow.com`) the script automatically inserts the `.api.` segment (`https://acme.api.identitynow.com`). Both scripts validate the JWT org claim against the tenant URL on startup to catch copy-paste token errors.
+**Tenant URL** — either form is accepted. If you supply the base URL (`https://acme.identitynow.com`) the script automatically inserts the `.api.` segment (`https://acme.api.identitynow.com`). The script validates the JWT org claim against the tenant URL on startup to catch copy-paste token errors.
 
 **Compatibility** — requires PowerShell 4.0 or later. TLS 1.2 is enabled automatically, so no manual `[Net.ServicePointManager]` configuration is needed.
 
@@ -209,23 +209,11 @@ Attribute names accept the `attribute.` prefix or bare names interchangeably —
 
 **Snapshot:** Automatically saves a pre-run snapshot before writing; `X` operation restores from any saved snapshot.
 
-### `ISC-Update-Roles-Criteria.ps1` — original script
-
-Simpler, single-step version. No preview step or find-by-criteria targeting. Suitable for quick scripted runs where you know exactly which roles to target by name.
-
-```powershell
-./scripts/ISC-Update-Roles-Criteria.ps1
-
-./scripts/ISC-Update-Roles-Criteria.ps1 -WhatIf
-```
-
-Supports the same five operations (U / V / A / R / C) and saves a pre-run snapshot automatically.
-
 ---
 
 ## Snapshot format
 
-Both the Electron app and the PowerShell scripts use the same snapshot JSON schema:
+Both the Electron app and the PowerShell script use the same snapshot JSON schema:
 
 ```json
 [

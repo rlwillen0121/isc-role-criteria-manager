@@ -14,7 +14,7 @@
  *   - `add` when creating criteria where none existed,
  *   - `remove` when criteria becomes empty.
  *
- * Behaviour mirrors `scripts/ISC-Update-Roles-Criteria.ps1` but is a fresh
+ * Behaviour mirrors `scripts/Invoke-ISCRoleCriteriaManager.ps1` but is a fresh
  * implementation; notably the stringValue<->values[] invariant is always
  * enforced (the PowerShell port could leave a node with neither field).
  */
