@@ -19,7 +19,6 @@ This document describes the architecture of the built application.
 ```
 isc-role-criteria-manager/
 ├── scripts/
-│   ├── ISC-Update-Roles-Criteria.ps1          ← original single-step script
 │   └── Invoke-ISCRoleCriteriaManager.ps1      ← full-featured companion (feature parity with app)
 ├── projects/sailpoint-components/src/lib/
 │   └── role-criteria-manager/

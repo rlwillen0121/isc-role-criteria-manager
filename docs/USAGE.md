@@ -15,7 +15,7 @@
 5. [Preview — before/after diff + identity counts](#5-preview--beforeafter-diff--identity-counts)
 6. [Apply → Results](#6-apply--results)
 7. [Restore from Snapshot](#7-restore-from-snapshot)
-8. [PowerShell scripts](#8-powershell-scripts)
+8. [PowerShell script](#8-powershell-script)
 
 ---
 
@@ -183,9 +183,9 @@ Confirm and execute the restore — the roles are patched back to their snapshot
 
 ---
 
-## 8. PowerShell scripts
+## 8. PowerShell script
 
-The companion PowerShell scripts (`Invoke-ISCRoleCriteriaManager.ps1` and `ISC-Update-Roles-Criteria.ps1`) provide full feature parity in a headless terminal. See the [README](../README.md#powershell-scripts) for the complete reference.
+The companion PowerShell script (`Invoke-ISCRoleCriteriaManager.ps1`) provides full feature parity in a headless terminal. See the [README](../README.md#powershell-script) for the complete reference.
 
 **Key behaviors:**
 
