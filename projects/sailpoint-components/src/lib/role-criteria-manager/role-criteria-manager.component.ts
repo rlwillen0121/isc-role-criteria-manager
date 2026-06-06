@@ -47,6 +47,11 @@ import {
   SnapshotEntry,
   restoreFromSnapshot,
 } from './models/criteria-operations';
+import {
+  matchRolesToRefs,
+  parseRoleListCsv,
+  refLabel,
+} from './models/csv-import';
 
 /** A role row shown in the Target panel table. */
 interface RoleRow {
@@ -131,7 +136,7 @@ export class RoleCriteriaManagerComponent {
   @ViewChild('stepper') stepper?: MatStepper;
 
   // ----- Panel 1: Target -----
-  mode: 'single' | 'bulk' | 'criteria' | 'access' = 'single';
+  mode: 'single' | 'bulk' | 'criteria' | 'access' | 'csv' = 'single';
   searchText = '';
   criteriaFilter: { attribute: string; operation: LeafOperation | ''; value: string } = {
     attribute: '',
@@ -146,6 +151,14 @@ export class RoleCriteriaManagerComponent {
   searching = false;
   searched = false;
   readonly displayedColumns = ['select', 'name', 'id', 'membershipType', 'nodeCount'];
+
+  // ----- Panel 1: CSV import (target scope only) -----
+  /** Name of the most recently imported CSV file, shown in the panel. */
+  csvFileName = '';
+  /** Row-level CSV parse problems (e.g. a row with neither name nor id). */
+  csvErrors: { row: number; message: string }[] = [];
+  /** Labels of CSV refs that matched no role in the tenant. */
+  csvUnmatched: string[] = [];
 
   // ----- Panel 1: Identity attribute suggestions (loaded lazily) -----
   identityAttributeSuggestions: string[] = [];
@@ -225,6 +238,7 @@ export class RoleCriteriaManagerComponent {
       error?: string;
     }>;
     browseForJsonFile: () => Promise<{ success: boolean; canceled?: boolean; content?: string; filePath?: string; error?: string }>;
+    browseForCsvFile: () => Promise<{ success: boolean; canceled?: boolean; content?: string; filePath?: string; error?: string }>;
   } {
     return this.apiFactory.getApi() as never;
   }
@@ -443,6 +457,108 @@ export class RoleCriteriaManagerComponent {
       this.searched = true;
       this.cdr.detectChanges();
     }
+  }
+
+  /**
+   * Import-from-CSV target mode: read a CSV list of role identifiers, resolve
+   * them against the tenant's roles, and populate the selection table. The CSV
+   * only scopes *which* roles to edit — the operation is chosen later in the
+   * normal flow, so nothing downstream of the Target step changes.
+   */
+  async pickCsv(): Promise<void> {
+    let res: {
+      success: boolean;
+      canceled?: boolean;
+      content?: string;
+      filePath?: string;
+      error?: string;
+    };
+    try {
+      res = await this.api.browseForCsvFile();
+    } catch {
+      this.snackBar.open('Failed to open CSV file.', 'Close', { duration: 5000 });
+      return;
+    }
+    if (!res?.success) {
+      if (!res?.canceled) {
+        this.snackBar.open(res?.error ?? 'Failed to open CSV file.', 'Close', {
+          duration: 5000,
+        });
+      }
+      return;
+    }
+
+    const { refs, errors } = parseRoleListCsv(res.content ?? '');
+    this.csvErrors = errors;
+    this.csvUnmatched = [];
+    this.csvFileName = this.basename(res.filePath ?? '');
+
+    if (refs.length === 0) {
+      this.roleRows = [];
+      this.searched = true;
+      this.snackBar.open(
+        errors.length > 0
+          ? `No usable rows in the CSV (${errors.length} error(s)).`
+          : 'The CSV contained no role names or ids.',
+        'Close',
+        { duration: 6000 }
+      );
+      return;
+    }
+
+    this.searching = true;
+    this.searched = false;
+    this.roleRows = [];
+    this.roleCache.clear();
+    this.cdr.detectChanges();
+
+    try {
+      const allRoles = await this.fetchAllRoles(undefined);
+      const { matched, unmatched } = matchRolesToRefs(refs, allRoles);
+      this.csvUnmatched = unmatched.map(refLabel);
+
+      this.roleRows = matched.map(({ role }) => {
+        const criteria = parseCriteria(role.membership?.criteria ?? null);
+        return {
+          id: role.id ?? '',
+          name: role.name ?? '(unnamed)',
+          membershipType: role.membership?.type ?? '—',
+          nodeCount: countNodes(criteria),
+          selected: true,
+          role,
+        };
+      });
+
+      if (this.roleRows.length === 0) {
+        this.snackBar.open(
+          'No roles from the CSV matched any role in the tenant.',
+          'Close',
+          { duration: 6000 }
+        );
+      } else if (this.csvUnmatched.length > 0) {
+        this.snackBar.open(
+          `${this.roleRows.length} role(s) matched · ${this.csvUnmatched.length} not found.`,
+          'Close',
+          { duration: 5000 }
+        );
+      }
+    } catch (err) {
+      this.snackBar.open(
+        `Failed to fetch roles: ${this.extractError(err)}`,
+        'Close',
+        { duration: 6000 }
+      );
+    } finally {
+      this.searching = false;
+      this.searched = true;
+      this.cdr.detectChanges();
+    }
+  }
+
+  /** Last path segment of a file path, for display. */
+  private basename(p: string): string {
+    const parts = p.split(/[\\/]/);
+    return parts[parts.length - 1] || p;
   }
 
   /**
@@ -1157,6 +1273,9 @@ export class RoleCriteriaManagerComponent {
     this.searchText = '';
     this.criteriaFilter = { attribute: '', operation: '', value: '' };
     this.accessFilter = { type: 'accessProfile', name: '' };
+    this.csvFileName = '';
+    this.csvErrors = [];
+    this.csvUnmatched = [];
     this.roleRows = [];
     this.searching = false;
     this.searched = false;

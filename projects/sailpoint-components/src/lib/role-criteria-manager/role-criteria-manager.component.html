@@ -19,6 +19,7 @@
               <mat-radio-button value="bulk">Bulk (name contains)</mat-radio-button>
               <mat-radio-button value="criteria">Find by criteria</mat-radio-button>
               <mat-radio-button value="access">Find by access profile / entitlement</mat-radio-button>
+              <mat-radio-button value="csv">Import from CSV</mat-radio-button>
             </mat-radio-group>
 
             @if (mode === 'single' || mode === 'bulk') {
@@ -136,6 +137,53 @@
               </div>
             }
 
+            @if (mode === 'csv') {
+              <div class="criteria-filter-section">
+                <div class="csv-import-row">
+                  <button
+                    mat-raised-button
+                    color="primary"
+                    class="find-button"
+                    (click)="pickCsv()"
+                    [disabled]="searching"
+                  >
+                    <mat-icon>upload_file</mat-icon>
+                    Choose CSV file
+                  </button>
+                  @if (csvFileName) {
+                    <span class="csv-file-name">{{ csvFileName }}</span>
+                  }
+                </div>
+                <p class="attr-hint">
+                  CSV with a <code>RoleName</code> and/or <code>RoleId</code> column (a plain
+                  one-column list of names also works). The roles it lists become your selection —
+                  pick the operation to apply on the next step.
+                </p>
+                @if (csvErrors.length > 0) {
+                  <div class="csv-warning">
+                    <mat-icon>warning</mat-icon>
+                    <span>{{ csvErrors.length }} row(s) skipped:</span>
+                    <ul>
+                      @for (e of csvErrors; track $index) {
+                        <li>Row {{ e.row }}: {{ e.message }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+                @if (csvUnmatched.length > 0) {
+                  <div class="csv-warning">
+                    <mat-icon>error_outline</mat-icon>
+                    <span>{{ csvUnmatched.length }} CSV entry/entries not found in the tenant:</span>
+                    <ul>
+                      @for (u of csvUnmatched; track $index) {
+                        <li>{{ u }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+              </div>
+            }
+
             @if (searching) {
               <div class="loading-row">
                 <mat-spinner diameter="28"></mat-spinner>
@@ -146,7 +194,7 @@
             @if (searched && roleRows.length > 0) {
               <div class="result-count-row">
                 <span>{{ roleRows.length }} role(s) found · {{ selectedRoles().length }} selected</span>
-                @if (mode === 'bulk' || mode === 'criteria') {
+                @if (mode === 'bulk' || mode === 'criteria' || mode === 'csv') {
                   <button mat-button (click)="selectAll()">Select All {{ roleRows.length }}</button>
                   <button mat-button (click)="clearSelection()">Clear</button>
                 }

@@ -78,7 +78,7 @@ npm start           # launches Electron in dev mode
 
 ### Features
 
-#### Target — four ways to find the roles you want to edit
+#### Target — five ways to find the roles you want to edit
 
 | Mode | How it works |
 |---|---|
@@ -86,6 +86,7 @@ npm start           # launches Electron in dev mode
 | **Bulk (name contains)** | Substring match across all roles |
 | **Find by criteria** | Filter roles whose membership criteria contain a specific attribute, operator, and/or value. Attribute field autocompletes from live ISC identity attributes. |
 | **Find by access profile / entitlement** | Filter roles that grant a specific access profile or entitlement (name-contains). Autocompletes from live ISC data. |
+| **Import from CSV** | Pick a CSV that lists the roles to edit by `RoleName` and/or `RoleId`; matched roles fill the selection table (unmatched entries are reported). See [Import roles from a CSV](#import-roles-from-a-csv). |
 
 #### Operations — five ways to modify criteria
 
@@ -190,7 +191,14 @@ Full feature parity with the Electron app. Four-step interactive workflow: Targe
 ./scripts/Invoke-ISCRoleCriteriaManager.ps1 -WhatIf
 ```
 
-**Target modes:** Single / Bulk / Find by criteria / Find by access profile or entitlement
+**Target modes:** Single / Bulk / Find by criteria / Find by access profile or entitlement / Import from CSV
+
+```powershell
+# Scope the target roles from a CSV (RoleName and/or RoleId), then pick the
+# operation interactively. -CsvPath skips the target-mode prompt; combine with
+# -WhatIf for a dry run.
+./scripts/Invoke-ISCRoleCriteriaManager.ps1 -CsvPath ./docs/sample-import.csv
+```
 
 **Operations:**
 
@@ -210,6 +218,42 @@ Attribute names accept the `attribute.` prefix or bare names interchangeably —
 **Snapshot:** Automatically saves a pre-run snapshot before writing; `X` operation restores from any saved snapshot.
 
 ---
+
+## Import roles from a CSV
+
+The **Import from CSV** target mode (Electron radio button, or the PowerShell `[I]` menu choice /
+`-CsvPath` parameter) loads a list of roles to edit from a CSV. The CSV only defines *which* roles to
+target — you still pick the single operation to apply on the next step, exactly as with the other
+target modes.
+
+The file is a simple list of role identifiers with case-insensitive headers:
+
+| Column | Meaning |
+|---|---|
+| `RoleName` | Match an existing role by its **exact** name. |
+| `RoleId` | Match by exact role id (preferred when present — unambiguous). |
+
+Rules:
+
+- Provide at least one of `RoleName` / `RoleId` per row; if both are present, `RoleId` wins.
+- Blank rows are skipped; a row with neither a name nor an id is reported and skipped.
+- A name shared by several roles matches all of them — review the selection before applying.
+- If the file has no recognized header, the first column is treated as `RoleName`, so a bare
+  one-column list of names also works.
+- Names containing commas must be quoted (`"Field Ops, North"`).
+
+A ready-to-edit template lives at [`docs/sample-import.csv`](docs/sample-import.csv):
+
+```csv
+RoleName,RoleId
+DL - Engineering,
+DL - Sales,
+,2c91808a7b1234567f0e
+"Field Ops, North",
+```
+
+After import, the matched roles populate the selection table and the normal
+Operation → Preview → Apply flow takes over (including the pre-run snapshot and dry-run rails).
 
 ## Snapshot format
 

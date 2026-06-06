@@ -12,6 +12,7 @@
       Bulk        — role name contains substring
       Criteria    — roles whose membership criteria match an attribute/op/value
       Access      — roles that contain a specific access profile or entitlement
+      Import      - role list (RoleName and/or RoleId columns) loaded from a CSV file
 
     OPERATIONS
       Update      — replace an old value with new value(s) on a matching leaf
@@ -35,6 +36,11 @@
 .EXAMPLE
     # Dry run — previews all changes, makes no API writes
     ./Invoke-ISCRoleCriteriaManager.ps1 -WhatIf
+
+.EXAMPLE
+    # Scope the target roles from a CSV (RoleName and/or RoleId), then pick the
+    # operation interactively. -CsvPath skips the target-mode prompt.
+    ./Invoke-ISCRoleCriteriaManager.ps1 -CsvPath ./docs/sample-import.csv
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -42,7 +48,8 @@ param(
     [string]$TenantUrl    = $env:ISC_TENANT_URL,
     [string]$ClientId     = $env:ISC_CLIENT_ID,
     [string]$ClientSecret = $env:ISC_CLIENT_SECRET,
-    [string]$BearerToken  = $env:ISC_BEARER_TOKEN
+    [string]$BearerToken  = $env:ISC_BEARER_TOKEN,
+    [string]$CsvPath      = $env:ISC_CSV_PATH
 )
 
 $ErrorActionPreference = 'Stop'
@@ -722,6 +729,112 @@ function Get-AllRolesPaged([string]$filterParam = '') {
 }
 
 # ============================================================================
+# SECTION 5b - CSV ROLE-LIST IMPORT (target scope only)
+# The CSV only identifies which existing roles to edit; the operation is still
+# chosen interactively. Mirrors the Electron app's parseRoleListCsv +
+# matchRolesToRefs (models/csv-import.ts).
+# ============================================================================
+
+# Parse a CSV of role identifiers. Recognizes RoleName/RoleId headers
+# (case-insensitive; Name/Id accepted too). With no recognized header the file
+# is treated as headerless and the first column is used as the role name, so a
+# bare one-column list of names works. Returns @{ refs=@(...); errors=@(...) }.
+function Import-RoleListCsv([string]$Path) {
+    $refs      = New-Object 'System.Collections.Generic.List[object]'
+    $rowErrors = New-Object 'System.Collections.Generic.List[object]'
+
+    $lines = @(Get-Content -Path $Path)
+    if ($lines.Count -eq 0) { return @{ refs = @(); errors = @() } }
+
+    # Header detection on the first non-empty line.
+    $firstLine = ($lines | Where-Object { $_.Trim() -ne '' } | Select-Object -First 1)
+    $headerCells = @(($firstLine -split ',') | ForEach-Object {
+        (($_ -replace '"', '').Trim().ToLower()) -replace '[\s_]+', ''
+    })
+    $hasHeader = ($headerCells -contains 'rolename') -or ($headerCells -contains 'roleid') `
+                 -or ($headerCells -contains 'name') -or ($headerCells -contains 'id')
+
+    if ($hasHeader) {
+        $rows = @(Import-Csv -Path $Path)
+        $props = if ($rows.Count -gt 0) { @($rows[0].PSObject.Properties.Name) } else { @() }
+        $nameProp = $props | Where-Object { (($_.ToLower()) -replace '[\s_]+', '') -in @('rolename', 'name') } | Select-Object -First 1
+        $idProp   = $props | Where-Object { (($_.ToLower()) -replace '[\s_]+', '') -in @('roleid', 'id') }   | Select-Object -First 1
+
+        $rowNum = 1   # header occupies line 1
+        foreach ($row in $rows) {
+            $rowNum++
+            $allEmpty = -not (@($row.PSObject.Properties.Value) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+            if ($allEmpty) { continue }   # skip blank rows
+            $roleName = if ($nameProp) { ([string]$row.$nameProp).Trim() } else { '' }
+            $roleId   = if ($idProp)   { ([string]$row.$idProp).Trim() }   else { '' }
+            if ([string]::IsNullOrWhiteSpace($roleName) -and [string]::IsNullOrWhiteSpace($roleId)) {
+                $rowErrors.Add([pscustomobject]@{ row = $rowNum; message = 'row has neither a role name nor a role id' })
+                continue
+            }
+            $refs.Add([pscustomobject]@{ rowNumber = $rowNum; roleName = $roleName; roleId = $roleId })
+        }
+    } else {
+        # Headerless: first column = role name.
+        $lineNum = 0
+        foreach ($line in $lines) {
+            $lineNum++
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $first = (($line -split ',')[0])
+            $first = ($first -replace '^\s*"', '' -replace '"\s*$', '').Trim()
+            if ([string]::IsNullOrWhiteSpace($first)) { continue }
+            $refs.Add([pscustomobject]@{ rowNumber = $lineNum; roleName = $first; roleId = '' })
+        }
+    }
+
+    # NOTE: use .ToArray() (not @($list)) for the hashtable values - wrapping a
+    # generic List in @() inside a hashtable literal throws "Argument types do
+    # not match" on both Windows PowerShell 5.1 and PowerShell 7.
+    return @{ refs = $refs.ToArray(); errors = $rowErrors.ToArray() }
+}
+
+# Resolve parsed refs against the tenant's roles: exact RoleId wins, else exact
+# RoleName (a shared name matches all such roles; a role referenced twice is
+# emitted once). Returns @{ matched=@(roles); unmatched=@(labels) }.
+function Resolve-CsvRoles($refs, $allRoles) {
+    $byId   = @{}
+    $byName = @{}
+    foreach ($role in $allRoles) {
+        if ($role.id)   { $byId[$role.id] = $role }
+        if ($role.name) {
+            if (-not $byName.ContainsKey($role.name)) { $byName[$role.name] = New-Object 'System.Collections.Generic.List[object]' }
+            $byName[$role.name].Add($role)
+        }
+    }
+
+    $matched   = New-Object 'System.Collections.Generic.List[object]'
+    $unmatched = New-Object 'System.Collections.Generic.List[object]'
+    $seen      = @{}
+
+    foreach ($ref in $refs) {
+        $found = @()
+        if ($ref.roleId -and $byId.ContainsKey($ref.roleId)) {
+            $found = @($byId[$ref.roleId])
+        } elseif ($ref.roleName -and $byName.ContainsKey($ref.roleName)) {
+            # .ToArray() (not @($list)) - see the note in Import-RoleListCsv.
+            $found = $byName[$ref.roleName].ToArray()
+        }
+        if ($found.Count -eq 0) {
+            $label = if ($ref.roleId) { $ref.roleId } elseif ($ref.roleName) { $ref.roleName } else { "row $($ref.rowNumber)" }
+            $unmatched.Add($label)
+            continue
+        }
+        foreach ($role in $found) {
+            if (-not $seen.ContainsKey($role.id)) {
+                $seen[$role.id] = $true
+                $matched.Add($role)
+            }
+        }
+    }
+
+    return @{ matched = $matched.ToArray(); unmatched = $unmatched.ToArray() }
+}
+
+# ============================================================================
 # SECTION 6 — MAIN WORKFLOW
 # ============================================================================
 
@@ -735,13 +848,21 @@ Write-Host '=================================================' -ForegroundColor 
 # ──────────────────────────────────────────────────────────────────────────────
 Write-Host ''
 Write-Host 'STEP 1 — Target' -ForegroundColor Cyan
-Write-Host '  [S] Single role (exact name)'
-Write-Host '  [B] Bulk (role name contains)'
-Write-Host '  [C] Find by criteria  (attribute/operation/value filter across all roles)'
-Write-Host '  [A] Find by access profile or entitlement'
-Write-Host ''
-Write-Host 'Select target mode: ' -ForegroundColor Cyan -NoNewline
-$targetMode = ([Console]::ReadLine()).Trim().ToUpper()
+
+if (-not [string]::IsNullOrWhiteSpace($CsvPath)) {
+    # -CsvPath supplied: jump straight to CSV import, skip the target-mode prompt.
+    $targetMode = 'I'
+    Write-Host "  Mode: Import from CSV (-CsvPath $CsvPath)" -ForegroundColor Cyan
+} else {
+    Write-Host '  [S] Single role (exact name)'
+    Write-Host '  [B] Bulk (role name contains)'
+    Write-Host '  [C] Find by criteria  (attribute/operation/value filter across all roles)'
+    Write-Host '  [A] Find by access profile or entitlement'
+    Write-Host '  [I] Import from CSV (role list - RoleName and/or RoleId)'
+    Write-Host ''
+    Write-Host 'Select target mode: ' -ForegroundColor Cyan -NoNewline
+    $targetMode = ([Console]::ReadLine()).Trim().ToUpper()
+}
 
 $targetRoles = @()
 
@@ -793,6 +914,29 @@ switch ($targetMode) {
             })
             Write-Host "$($targetRoles.Count) role(s) contain a matching access profile." -ForegroundColor Cyan
         }
+    }
+    'I' {
+        $path = if (-not [string]::IsNullOrWhiteSpace($CsvPath)) { $CsvPath }
+                else { (Read-Host 'Path to CSV file (RoleName and/or RoleId columns)').Trim() }
+        if (-not (Test-Path $path)) {
+            Write-Host "CSV file not found: $path" -ForegroundColor Red; exit 1
+        }
+        $parsed = Import-RoleListCsv $path
+        foreach ($e in $parsed.errors) {
+            Write-Host "  CSV row $($e.row) skipped: $($e.message)" -ForegroundColor Yellow
+        }
+        if ($parsed.refs.Count -eq 0) {
+            Write-Host 'No role names or ids found in the CSV. Exiting.' -ForegroundColor Yellow; exit 0
+        }
+        Write-Host "Loaded $($parsed.refs.Count) role reference(s) from CSV." -ForegroundColor Cyan
+        $allRoles = Get-AllRolesPaged
+        $resolved = Resolve-CsvRoles $parsed.refs $allRoles
+        $targetRoles = @($resolved.matched)
+        if ($resolved.unmatched.Count -gt 0) {
+            Write-Host "  $($resolved.unmatched.Count) CSV entry/entries not found in the tenant:" -ForegroundColor Yellow
+            $resolved.unmatched | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkYellow }
+        }
+        Write-Host "$($targetRoles.Count) role(s) matched from CSV." -ForegroundColor Cyan
     }
     default {
         Write-Host 'Invalid target mode. Exiting.' -ForegroundColor Red
