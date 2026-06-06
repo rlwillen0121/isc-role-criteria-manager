@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // file browser
   browseForJsonFile: () => ipcMain.invoke('browse-for-json-file'),
+  browseForCsvFile: () => ipcMain.invoke('browse-for-csv-file'),
   saveFile: (options: { defaultPath?: string; content: string }) =>
     ipcMain.invoke('save-file', options),
 

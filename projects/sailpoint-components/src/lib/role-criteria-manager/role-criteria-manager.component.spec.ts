@@ -419,4 +419,66 @@ describe('RoleCriteriaManagerComponent', () => {
       expect(stepper.selectedIndex).toBe(0);
     });
   });
+
+  describe('pickCsv (CSV target mode)', () => {
+    function setBrowse(browseForCsvFile: jest.Mock) {
+      apiFactory.getApi.mockReturnValue({ saveFile, browseForCsvFile });
+    }
+
+    it('resolves CSV refs against the tenant and auto-selects matched roles', async () => {
+      const eng = makeRole('r1', 'Engineering', null);
+      const sales = makeRole('r2', 'Sales', null);
+      // fetchAllRoles pages until an empty page: one page, then undefined -> stop.
+      sdk.listRoles.mockResolvedValueOnce({ data: [eng, sales] });
+      setBrowse(
+        jest.fn().mockResolvedValue({
+          success: true,
+          filePath: '/tmp/roles.csv',
+          content: 'RoleName,RoleId\nEngineering,\n,r2\nGhost,',
+        })
+      );
+
+      component.mode = 'csv';
+      await component.pickCsv();
+
+      expect(component.roleRows.map((r) => r.id).sort()).toEqual(['r1', 'r2']);
+      expect(component.roleRows.every((r) => r.selected)).toBe(true);
+      expect(component.csvUnmatched).toEqual(['Ghost']);
+      expect(component.csvFileName).toBe('roles.csv');
+      expect(sdk.listRoles).toHaveBeenCalledWith({
+        filters: undefined,
+        limit: 250,
+        offset: 0,
+      });
+    });
+
+    it('reports parse errors and skips the role fetch when no rows are usable', async () => {
+      setBrowse(
+        jest.fn().mockResolvedValue({
+          success: true,
+          filePath: '/tmp/empty.csv',
+          content: 'RoleName,RoleId,Note\n,,oops',
+        })
+      );
+
+      component.mode = 'csv';
+      await component.pickCsv();
+
+      expect(component.roleRows).toHaveLength(0);
+      expect(component.csvErrors).toEqual([
+        { row: 2, message: 'row has neither a role name nor a role id' },
+      ]);
+      expect(sdk.listRoles).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the file picker is canceled', async () => {
+      setBrowse(jest.fn().mockResolvedValue({ success: false, canceled: true }));
+
+      component.mode = 'csv';
+      await component.pickCsv();
+
+      expect(component.roleRows).toHaveLength(0);
+      expect(sdk.listRoles).not.toHaveBeenCalled();
+    });
+  });
 });
