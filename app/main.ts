@@ -314,6 +314,26 @@ try {
     }
   });
 
+  ipcMain.handle('browse-for-csv-file', async () => {
+    try {
+      const result = await dialog.showOpenDialog(win!, {
+        title: 'Import Role List (CSV)',
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+        properties: ['openFile'],
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true };
+      }
+      const content = fs.readFileSync(result.filePaths[0], 'utf-8');
+      if (content.length > 5_000_000) {
+        return { success: false, error: 'File too large (> 5 MB)' };
+      }
+      return { success: true, filePath: result.filePaths[0], content };
+    } catch (error) {
+      return { success: false, error: 'Failed to read file' };
+    }
+  });
+
   ipcMain.handle(
     'save-file',
     async (event, options: { defaultPath?: string; content: string }) => {

@@ -38,7 +38,7 @@ Navigate to **Role Criteria Manager** via the sidebar or the shortcut card on th
 
 ## 2. Target — choose which roles to edit
 
-The Target step lets you find the role(s) you want to modify. Four modes are available:
+The Target step lets you find the role(s) you want to modify. Five modes are available:
 
 ### Single role (exact name match)
 
@@ -65,13 +65,23 @@ Filter roles that grant a specific access profile or entitlement (name-contains)
 
 ![Find by access profile mode](media/06-target-access-profile-mode.png)
 
+### Import from CSV
+
+Scope the edit to a specific set of roles listed in a CSV. Choose **Import from CSV**, click
+**Choose CSV file**, and pick a file with a `RoleName` and/or `RoleId` column (a plain one-column
+list of names also works). Matched roles fill the selection table; any rows that don't match a role
+in the tenant — or that are missing both a name and an id — are reported so you can fix them. The CSV
+only chooses *which* roles to edit; you pick the operation to apply on the next step, just like the
+other modes. A template lives at [`sample-import.csv`](sample-import.csv), and the full schema is in
+the [README](../README.md#import-roles-from-a-csv).
+
 ### Search results table
 
-After clicking **Find Roles**, matching roles appear in a table with their membership type and criteria node count. Select the roles you want to edit, then click **Next**.
+After clicking **Find Roles** (or importing a CSV), matching roles appear in a table with their membership type and criteria node count. Select the roles you want to edit, then click **Next**.
 
 ![Bulk results table](media/07-target-bulk-results-table.png)
 
-> **Target modes GIF** — all four modes and a bulk results table
+> **Target modes GIF** — the search modes and a bulk results table
 > ![target-modes](media/target-modes.gif)
 
 ---
@@ -197,6 +207,9 @@ The companion PowerShell script (`Invoke-ISCRoleCriteriaManager.ps1`) provides f
 - **Identity-impact preview** — before/after identity match counts using corrected `attributes.<name>` prefix and operation-aware Elasticsearch terms.
 - **PowerShell 4.0+ / TLS 1.2** — compatible with Windows PowerShell 4.0 and later; TLS 1.2 is enabled automatically.
 - **`-WhatIf`** — dry-run flag; previews all changes with no API writes.
+- **`-CsvPath`** — scope the target roles from a CSV (`RoleName`/`RoleId`); jumps straight to the
+  Import-from-CSV target mode and skips the target-mode prompt, then continues to the interactive
+  operation step. Combine with `-WhatIf` for a dry run.
 
 **PowerShell walkthrough — Target → Operation → Preview → `WhatIf`**
 

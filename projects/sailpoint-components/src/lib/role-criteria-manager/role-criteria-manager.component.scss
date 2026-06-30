@@ -89,6 +89,39 @@
   margin: 0 0 12px;
 }
 
+.csv-import-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+
+  .csv-file-name {
+    font-family: "Roboto Mono", monospace;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.7);
+  }
+}
+
+.csv-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #8a6d00;
+  margin: 8px 0;
+
+  mat-icon {
+    color: #b58a00;
+  }
+
+  ul {
+    flex-basis: 100%;
+    margin: 4px 0 0;
+    padding-left: 24px;
+  }
+}
+
 .op-form {
   display: flex;
   flex-direction: column;
