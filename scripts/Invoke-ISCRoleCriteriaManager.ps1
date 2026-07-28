@@ -869,7 +869,7 @@ $targetRoles = @()
 switch ($targetMode) {
     'S' {
         $roleName   = Read-Host 'Exact role name'
-        $escaped    = $roleName.Replace('"', '\"')
+        $escaped    = $roleName.Replace('\', '\\').Replace('"', '\"')
         $filterStr  = [uri]::EscapeDataString("name eq `"$escaped`"")
         $targetRoles = Get-AllRolesPaged $filterStr
         if ($targetRoles.Count -gt 1) {
@@ -879,7 +879,7 @@ switch ($targetMode) {
     }
     'B' {
         $partial    = Read-Host 'Name contains'
-        $escaped    = $partial.Replace('"', '\"')
+        $escaped    = $partial.Replace('\', '\\').Replace('"', '\"')
         $filterStr  = [uri]::EscapeDataString("name co `"$escaped`"")
         $targetRoles = Get-AllRolesPaged $filterStr
     }
