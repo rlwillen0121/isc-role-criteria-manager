@@ -1,26 +1,26 @@
 #Requires -Version 4.0
 <#
 .SYNOPSIS
-    ISC Role Criteria Manager — full-featured PowerShell companion.
+    ISC Role Criteria Manager - full-featured PowerShell companion.
 
 .DESCRIPTION
-    Four-step interactive workflow (Target → Operation → Preview → Apply) with
+    Four-step interactive workflow (Target -> Operation -> Preview -> Apply) with
     feature parity to the ISC Role Criteria Manager Electron app.
 
     TARGET MODES
-      Single      — exact role name match
-      Bulk        — role name contains substring
-      Criteria    — roles whose membership criteria match an attribute/op/value
-      Access      — roles that contain a specific access profile or entitlement
+      Single      - exact role name match
+      Bulk        - role name contains substring
+      Criteria    - roles whose membership criteria match an attribute/op/value
+      Access      - roles that contain a specific access profile or entitlement
       Import      - role list (RoleName and/or RoleId columns) loaded from a CSV file
 
     OPERATIONS
-      Update      — replace an old value with new value(s) on a matching leaf
-      Add Values  — append values to the first matching leaf (converts stringValue → values[])
-      Add Block   — insert a new criteria leaf, joining with AND or OR
-      Remove      — remove a specific value or entire attribute from criteria
-      Consolidate — merge sibling OR leaves for the same attribute (same op type only)
-      Restore     — revert role(s) to a saved snapshot
+      Update      - replace an old value with new value(s) on a matching leaf
+      Add Values  - append values to the first matching leaf (converts stringValue -> values[])
+      Add Block   - insert a new criteria leaf, joining with AND or OR
+      Remove      - remove a specific value or entire attribute from criteria
+      Consolidate - merge sibling OR leaves for the same attribute (same op type only)
+      Restore     - revert role(s) to a saved snapshot
 
     AUTHENTICATION (in priority order)
       1. OAuth2 client credentials (env: ISC_CLIENT_ID + ISC_CLIENT_SECRET)
@@ -34,7 +34,7 @@
     ./Invoke-ISCRoleCriteriaManager.ps1
 
 .EXAMPLE
-    # Dry run — previews all changes, makes no API writes
+    # Dry run - previews all changes, makes no API writes
     ./Invoke-ISCRoleCriteriaManager.ps1 -WhatIf
 
 .EXAMPLE
@@ -54,7 +54,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# TLS 1.2 — required for SailPoint ISC; default on PS4/Win8.1 is TLS 1.0/1.1
+# TLS 1.2 - required for SailPoint ISC; default on PS4/Win8.1 is TLS 1.0/1.1
 try {
     $tls12 = [Net.SecurityProtocolType]::Tls12
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $tls12
@@ -67,7 +67,7 @@ $PAGE_SIZE              = 250
 $LARGE_RESULT_THRESHOLD = 1000
 
 # ============================================================================
-# SECTION 1 — CONNECTION
+# SECTION 1 - CONNECTION
 # ============================================================================
 
 if ([string]::IsNullOrWhiteSpace($TenantUrl)) {
@@ -136,7 +136,7 @@ try {
     }
     Write-Host "Token org verified: $jwtOrg" -ForegroundColor Green
 } catch {
-    Write-Host '  (Could not decode JWT — proceeding)' -ForegroundColor DarkGray
+    Write-Host '  (Could not decode JWT - proceeding)' -ForegroundColor DarkGray
 }
 
 # --- Headers ---
@@ -153,7 +153,7 @@ $postHeaders  = @{
 }
 
 # ============================================================================
-# SECTION 2 — API HELPERS
+# SECTION 2 - API HELPERS
 # ============================================================================
 
 function Invoke-ISCGet([string]$Uri) {
@@ -188,7 +188,7 @@ function Get-IdentitySearchCount([string]$Query) {
 }
 
 # ============================================================================
-# SECTION 3 — CRITERIA MODEL
+# SECTION 3 - CRITERIA MODEL
 # Deep-clone via JSON round-trip; in-place mutations via PSObject.Properties.
 # Mirrors criteria.model.ts invariants exactly.
 # ============================================================================
@@ -223,8 +223,8 @@ function Get-LeafValues($node) {
 }
 
 # Enforces the leaf value invariant IN PLACE on $node.
-# 1 value  → stringValue, values removed.
-# 2+ values → values[], stringValue removed.
+# 1 value  -> stringValue, values removed.
+# 2+ values -> values[], stringValue removed.
 function Set-ValueInvariant($node, [string[]]$values) {
     if ($values.Count -eq 1) {
         $node | Add-Member -Force -NotePropertyName 'stringValue' -NotePropertyValue $values[0]
@@ -289,7 +289,7 @@ function Get-EscapedSearchValue([string]$v) {
 # NOTE: This intentionally diverges from the Electron app's
 # `criteriaTreeToSearchQuery`, which emits the raw `property:"value"` and
 # ignores the operation. That under-counts (often to zero) for custom identity
-# attributes because it omits the `attributes.` prefix and the wildcard form —
+# attributes because it omits the `attributes.` prefix and the wildcard form -
 # verified against the devrel tenant. The composite AND/OR/parenthesization
 # structure below is identical to the app; only the leaf field/operation
 # mapping is corrected so the impact counts are real.
@@ -317,7 +317,7 @@ function Get-LeafSearchTerm($node) {
         }
     }
     # NOT_EQUALS over multiple values is a conjunction (exclude all); every
-    # other operation ORs its alternatives — matching how a multi-value leaf
+    # other operation ORs its alternatives - matching how a multi-value leaf
     # is evaluated as role membership.
     $join = if ($op -eq 'NOT_EQUALS') { ' AND ' } else { ' OR ' }
     $joined = $terms -join $join
@@ -328,7 +328,7 @@ function Get-LeafSearchTerm($node) {
 # Converts a criteria tree into an ISC Search (Elasticsearch) query string.
 # Leaf nodes are mapped by Get-LeafSearchTerm; composite nodes join their
 # non-empty children with AND/OR and parenthesize when there is more than one
-# — structurally identical to the Electron app's `criteriaTreeToSearchQuery`.
+# - structurally identical to the Electron app's `criteriaTreeToSearchQuery`.
 # Returns '' for a node that contributes no constraint.
 function Get-CriteriaSearchQuery($node) {
     if ($null -eq $node) { return '' }
@@ -402,7 +402,7 @@ function Test-NodeMatchesFilter($node, [string]$attribute, [string]$operation, [
         }
         return $false
     }
-    # leaf — normalize IDENTITY key property and filter attribute before substring match
+    # leaf - normalize IDENTITY key property and filter attribute before substring match
     $prop = if ($node.PSObject.Properties['key'] -and $node.key) { $node.key.property } else { '' }
     $isIdentity = $node.PSObject.Properties['key'] -and $node.key -and $node.key.type -eq 'IDENTITY'
     $propNorm   = if ($isIdentity) { Get-NormalizedAttr $prop }      else { $prop }
@@ -423,7 +423,7 @@ function Test-RoleMatchesCriteriaFilter($role, [string]$attribute, [string]$oper
 }
 
 # ============================================================================
-# SECTION 4 — OPERATION FUNCTIONS
+# SECTION 4 - OPERATION FUNCTIONS
 # Each returns [pscustomobject]@{ status; reason; tree; patch }
 # status = 'ready' | 'skipped'
 # patch  = array of RFC-6902 op objects (empty when skipped)
@@ -482,7 +482,7 @@ function Invoke-UpdateValue($membership, [string]$attribute, [string]$oldValue, 
 # --- Add Values ---
 # Depth-first; stop at the FIRST matching leaf and append de-duplicated values.
 function Walk-AddValues($node, [string]$attribute, [string[]]$newValues, [ref]$matched, [ref]$changed) {
-    if ($matched.Value) { return }   # already found first leaf — stop
+    if ($matched.Value) { return }   # already found first leaf - stop
     $isIdentity = $node.PSObject.Properties['key'] -and $node.key -and $node.key.type -eq 'IDENTITY'
     if ($node.PSObject.Properties['key'] -and $node.key -and (Compare-IdentityAttr $node.key.property $attribute $isIdentity)) {
         $matched.Value = $true
@@ -563,7 +563,7 @@ function Rebuild-Remove($node, [string]$attribute, [string]$mode, [string]$value
             Set-ValueInvariant $node $remaining
             return $node
         }
-        return $node   # attribute matches but value absent — unchanged
+        return $node   # attribute matches but value absent - unchanged
     }
     # Composite
     if ($node.PSObject.Properties['children'] -and $node.children) {
@@ -599,7 +599,7 @@ function Invoke-RemoveCriteria($membership, [string]$attribute, [string]$mode, [
 # Only merges sibling OR leaves that share both attribute AND comparison operation.
 # Mixed operators (e.g. EQUALS vs CONTAINS) are left untouched to preserve semantics.
 function Rebuild-Consolidate($node, [string]$attribute, [ref]$matched) {
-    # Leaf — nothing to consolidate here
+    # Leaf - nothing to consolidate here
     if (-not ($node.PSObject.Properties['children'] -and $node.children)) { return $node }
 
     # Recurse first (bottom-up)
@@ -652,7 +652,7 @@ function Rebuild-Consolidate($node, [string]$attribute, [ref]$matched) {
                 }
                 $newChildren += New-LeafNode $attribute $child.operation $allVals
             }
-            # else: absorbed — skip
+            # else: absorbed - skip
         } else {
             $newChildren += $child
         }
@@ -691,7 +691,7 @@ function Invoke-RestoreFromSnapshot($snapshotEntry, $currentMembership) {
 }
 
 # ============================================================================
-# SECTION 5 — ROLE FETCH
+# SECTION 5 - ROLE FETCH
 # ============================================================================
 
 # Page through /v3/roles, accumulating up to LARGE_RESULT_THRESHOLD before
@@ -835,7 +835,7 @@ function Resolve-CsvRoles($refs, $allRoles) {
 }
 
 # ============================================================================
-# SECTION 6 — MAIN WORKFLOW
+# SECTION 6 - MAIN WORKFLOW
 # ============================================================================
 
 Write-Host ''
@@ -847,7 +847,7 @@ Write-Host '=================================================' -ForegroundColor 
 # STEP 1: TARGET
 # ──────────────────────────────────────────────────────────────────────────────
 Write-Host ''
-Write-Host 'STEP 1 — Target' -ForegroundColor Cyan
+Write-Host 'STEP 1 - Target' -ForegroundColor Cyan
 
 if (-not [string]::IsNullOrWhiteSpace($CsvPath)) {
     # -CsvPath supplied: jump straight to CSV import, skip the target-mode prompt.
@@ -873,7 +873,7 @@ switch ($targetMode) {
         $filterStr  = [uri]::EscapeDataString("name eq `"$escaped`"")
         $targetRoles = Get-AllRolesPaged $filterStr
         if ($targetRoles.Count -gt 1) {
-            Write-Host "  SAFETY: $($targetRoles.Count) roles returned for exact match — using only the first." -ForegroundColor Yellow
+            Write-Host "  SAFETY: $($targetRoles.Count) roles returned for exact match - using only the first." -ForegroundColor Yellow
             $targetRoles = @($targetRoles[0])
         }
     }
@@ -885,10 +885,10 @@ switch ($targetMode) {
     }
     'C' {
         $attrInput = Read-Host 'Attribute to filter by (e.g. attribute.cloudLifecycleState)'
-        Write-Host 'Operation filter (EQUALS/NOT_EQUALS/CONTAINS/STARTS_WITH/ENDS_WITH) — leave blank for Any: ' -NoNewline
+        Write-Host 'Operation filter (EQUALS/NOT_EQUALS/CONTAINS/STARTS_WITH/ENDS_WITH) - leave blank for Any: ' -NoNewline
         $opInput   = ([Console]::ReadLine()).Trim().ToUpper()
         if ($opInput -notin @('EQUALS','NOT_EQUALS','CONTAINS','STARTS_WITH','ENDS_WITH')) { $opInput = '' }
-        $valInput  = Read-Host 'Value filter (substring match) — leave blank for Any'
+        $valInput  = Read-Host 'Value filter (substring match) - leave blank for Any'
         $allRoles  = Get-AllRolesPaged
         $targetRoles = @($allRoles | Where-Object { Test-RoleMatchesCriteriaFilter $_ $attrInput $opInput $valInput })
         Write-Host "$($targetRoles.Count) role(s) matched the criteria filter." -ForegroundColor Cyan
@@ -957,13 +957,13 @@ $targetRoles | ForEach-Object { Write-Host "  $($_.name)  [$($_.id)]" -Foregroun
 # STEP 2: OPERATION
 # ──────────────────────────────────────────────────────────────────────────────
 Write-Host ''
-Write-Host 'STEP 2 — Operation' -ForegroundColor Cyan
-Write-Host '  [U] Update    — replace old value with new value(s)'
-Write-Host '  [V] Add Values— append value(s) to first matching leaf'
-Write-Host '  [A] Add Block — insert a new criteria leaf (AND/OR join)'
-Write-Host '  [R] Remove    — remove a value or entire attribute'
-Write-Host '  [C] Consolidate — merge sibling OR leaves (same attribute + operator)'
-Write-Host '  [X] Restore   — revert to a saved snapshot'
+Write-Host 'STEP 2 - Operation' -ForegroundColor Cyan
+Write-Host '  [U] Update    - replace old value with new value(s)'
+Write-Host '  [V] Add Values- append value(s) to first matching leaf'
+Write-Host '  [A] Add Block - insert a new criteria leaf (AND/OR join)'
+Write-Host '  [R] Remove    - remove a value or entire attribute'
+Write-Host '  [C] Consolidate - merge sibling OR leaves (same attribute + operator)'
+Write-Host '  [X] Restore   - revert to a saved snapshot'
 Write-Host ''
 Write-Host 'Select operation: ' -ForegroundColor Cyan -NoNewline
 $opChoice = ([Console]::ReadLine()).Trim().ToUpper()
@@ -971,7 +971,7 @@ $opChoice = ([Console]::ReadLine()).Trim().ToUpper()
 # Operation-specific parameter collection
 switch ($opChoice) {
     'U' {
-        $rawAttr  = Read-Host 'Attribute (e.g. cloudLifecycleState → will be prefixed with attribute.)'
+        $rawAttr  = Read-Host 'Attribute (e.g. cloudLifecycleState -> will be prefixed with attribute.)'
         $attribute = if ($rawAttr -like 'attribute.*') { $rawAttr } else { "attribute.$rawAttr" }
         Write-Host '  Enter ONE value to match (to add values use [V]; to drop a value use [R]).' -ForegroundColor Yellow
         $oldValue  = Read-Host 'Old value to match'
@@ -992,7 +992,7 @@ switch ($opChoice) {
         $keyType    = if ($keyTypeMap.ContainsKey($keyTypeNum)) { $keyTypeMap[$keyTypeNum] } else { 'IDENTITY' }
         $sourceId   = ''
         if ($keyType -ne 'IDENTITY') {
-            $sourceId = Read-Host "Source ID (required for $keyType — find it in ISC under Connections → Sources)"
+            $sourceId = Read-Host "Source ID (required for $keyType - find it in ISC under Connections -> Sources)"
             if ([string]::IsNullOrWhiteSpace($sourceId)) {
                 Write-Host "Source ID is required for key type $keyType. Exiting." -ForegroundColor Red; exit 1
             }
@@ -1051,7 +1051,7 @@ switch ($opChoice) {
 # No API writes happen here.
 # ──────────────────────────────────────────────────────────────────────────────
 Write-Host ''
-Write-Host 'STEP 3 — Preview' -ForegroundColor Cyan
+Write-Host 'STEP 3 - Preview' -ForegroundColor Cyan
 Write-Host 'Computing changes...' -ForegroundColor DarkGray
 
 # Fetch full role details for each selected role (criteria may not be in list payload)
@@ -1103,7 +1103,7 @@ foreach ($preview in $previews) {
     Write-Host "  Role: $($role.name)" -ForegroundColor White
     if ($result.status -eq 'skipped') {
         $skippedCount++
-        Write-Host "    Status : SKIP — $($result.reason)" -ForegroundColor DarkYellow
+        Write-Host "    Status : SKIP - $($result.reason)" -ForegroundColor DarkYellow
     } else {
         $readyCount++
         Write-Host '    Status : WILL CHANGE' -ForegroundColor Green
@@ -1113,7 +1113,7 @@ foreach ($preview in $previews) {
         Write-Host '    After:' -ForegroundColor DarkGray
         Write-CriteriaTree $result.tree 3
 
-        # Identity impact preview — before/after match counts from the ISC
+        # Identity impact preview - before/after match counts from the ISC
         # Search API (parity with the Electron app's Preview step).
         $beforeCount = Get-CriteriaIdentityCount $beforeCriteria
         $afterCount  = Get-CriteriaIdentityCount $result.tree
@@ -1133,13 +1133,13 @@ if ($readyCount -eq 0) {
 # STEP 4: SNAPSHOT + APPLY
 # ──────────────────────────────────────────────────────────────────────────────
 Write-Host ''
-Write-Host 'STEP 4 — Apply' -ForegroundColor Cyan
+Write-Host 'STEP 4 - Apply' -ForegroundColor Cyan
 
 if (-not $PSCmdlet.ShouldProcess("$readyCount role(s)", "PATCH membership criteria")) {
     Write-Host '[WhatIf] No changes written.' -ForegroundColor DarkCyan
     foreach ($preview in $previews | Where-Object { $_.result.status -eq 'ready' }) {
         $patchBody = ConvertTo-Json -InputObject $preview.result.patch -Depth 20 -Compress
-        Write-Host "  [WhatIf] $($preview.role.name) — patch: $patchBody" -ForegroundColor DarkCyan
+        Write-Host "  [WhatIf] $($preview.role.name) - patch: $patchBody" -ForegroundColor DarkCyan
     }
     exit 0
 }
@@ -1153,7 +1153,7 @@ if ($confirm -ne 'Y') {
 
 # Save pre-run snapshot
 $snapshotFile = "role-criteria-snapshot-$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
-Write-Host "Saving pre-run snapshot → $snapshotFile" -ForegroundColor Cyan
+Write-Host "Saving pre-run snapshot -> $snapshotFile" -ForegroundColor Cyan
 $snapshotOut = @($targetRoles | ForEach-Object {
     $rd = $roleDetails[$_.id]
     [pscustomobject]@{
@@ -1173,7 +1173,7 @@ foreach ($preview in $previews) {
     $result = $preview.result
 
     if ($result.status -eq 'skipped') {
-        Write-Host "  SKIP  $($role.name) — $($result.reason)" -ForegroundColor DarkYellow
+        Write-Host "  SKIP  $($role.name) - $($result.reason)" -ForegroundColor DarkYellow
         $results.Add([pscustomobject]@{ Role = $role.name; Status = "Skipped ($($result.reason))" })
         continue
     }
@@ -1194,7 +1194,7 @@ foreach ($preview in $previews) {
                 $errMsg = if ($ed.messages -and $ed.messages.Count -gt 0) { $ed.messages[0].text } else { $_.ErrorDetails.Message }
             } catch { }
         }
-        Write-Host "  ERR   $($role.name) — $errMsg" -ForegroundColor Red
+        Write-Host "  ERR   $($role.name) - $errMsg" -ForegroundColor Red
         $results.Add([pscustomobject]@{ Role = $role.name; Status = "Error: $errMsg" })
     }
 }
